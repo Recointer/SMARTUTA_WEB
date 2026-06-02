@@ -4,6 +4,14 @@
 > Sistema de Gestión Universitaria con Navegación Georreferenciada
 
 ---
+## 📋 Realizado Por G06 ESTRUCTURA DE DATOS:
+
+Chisag Punina Alex Jonathan
+Fueres Perugachi Daky Fernando
+Mena Romero Matías Xavier
+Sigcha Arcos Justin Israel
+Toainga Toapanta Snaider Alexander
+Valle Lopez Jonathan David
 
 ## 📋 Tabla de Contenidos
 
