@@ -41,7 +41,8 @@ services:
     build: ./frontend
     container_name: smartcampus_frontend
     ports:
-      - "8090:80"
+      - "8090:80"    # HTTP  → redirige a HTTPS
+      - "8443:443"   # HTTPS → acceso principal
     depends_on:
       - backend
     restart: always
