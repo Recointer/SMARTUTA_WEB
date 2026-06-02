@@ -91,13 +91,79 @@ int main() {
     ([](const crow::request& req) {
         int uid; std::string rol, nombre;
         if (!verifyJwt(req, uid, rol, nombre) || rol != "admin")
-            return jsonResp({{"error","Solo admin puede registrar usuarios"}}, 403);
+            return jsonResp({{"error","Solo admin puede registrar usuarios con este endpoint"}}, 403);
         auto body = parseBody(req);
         auto res  = AuthService::registrar(
             body.value("nombre",""), body.value("email",""),
             body.value("password",""), body.value("rol_id",3));
         return jsonResp(res, res["ok"] ? 201 : 400);
     });
+
+    // Registro público para estudiantes (sin JWT)
+    CROW_ROUTE(app, "/api/auth/register-student").methods("POST"_method)
+    ([](const crow::request& req) {
+        auto body = parseBody(req);
+        auto email    = body.value("email","");
+        auto password = body.value("password","");
+        auto nombre   = body.value("nombre","");
+        if (email.empty() || password.empty() || nombre.empty())
+            return jsonResp({{"error","Nombre, email y contraseña son obligatorios"}}, 400);
+        // Verificar email no registrado
+        if (UsuarioRepo::existeEmail(email))
+            return jsonResp({{"error","Este email ya está registrado"}}, 409);
+        // Crear usuario con rol estudiante (rol_id=3)
+        auto resUser = AuthService::registrar(nombre, email, password, 3);
+        if (!resUser["ok"].get<bool>()) return jsonResp(resUser, 400);
+        int nuevo_uid = resUser["id"].get<int>();
+        // Crear perfil de estudiante si viene info extra
+        auto cedula     = body.value("cedula","00000000");
+        auto apellido   = body.value("apellido","");
+        auto carrera    = body.value("carrera","Sin carrera");
+        int  facultad_id= body.value("facultad_id",1);
+        TramiteRepo::crearEstudiante(cedula, nombre, apellido, carrera, facultad_id, email, nuevo_uid);
+        return jsonResp({{"ok",true},{"mensaje","Registro exitoso. Ya puedes iniciar sesión."}}, 201);
+    });
+
+    // Admin edita carrera/facultad de un estudiante
+    CROW_ROUTE(app, "/api/estudiantes/<int>").methods("PUT"_method)
+    ([](const crow::request& req, int id) {
+        int uid; std::string rol, nombre;
+        if (!verifyJwt(req, uid, rol, nombre) || rol != "admin")
+            return jsonResp({{"error","Solo admin puede editar estudiantes"}}, 403);
+        auto body = parseBody(req);
+        TramiteRepo::updateEstudiante(id,
+            body.value("cedula",""), body.value("nombre",""),
+            body.value("apellido",""), body.value("carrera",""),
+            body.value("facultad_id",1));
+        return jsonResp({{"ok",true}});
+    });
+
+    // Admin lista estudiantes con detalle
+    CROW_ROUTE(app, "/api/estudiantes").methods("GET"_method)
+    ([](const crow::request& req) {
+        int uid; std::string rol, nombre;
+        if (!verifyJwt(req, uid, rol, nombre) || rol != "admin")
+            return jsonResp({{"error","No autorizado"}}, 403);
+        auto _conn_ = DB_CONN(); pqxx::work txn(*_conn_);
+        auto r = txn.exec(
+            "SELECT e.id, e.cedula, e.nombre, e.apellido, e.carrera, "
+            "e.email, e.facultad_id, f.nombre AS facultad "
+            "FROM estudiantes e LEFT JOIN facultades f ON e.facultad_id=f.id "
+            "ORDER BY e.nombre");
+        txn.commit();
+        json arr = json::array();
+        for (const auto row : r)
+            arr.push_back({{"id",         row["id"].as<int>()},
+                           {"cedula",     row["cedula"].c_str()},
+                           {"nombre",     row["nombre"].c_str()},
+                           {"apellido",   row["apellido"].c_str()},
+                           {"carrera",    row["carrera"].is_null()?"":row["carrera"].c_str()},
+                           {"email",      row["email"].c_str()},
+                           {"facultad",   row["facultad"].is_null()?"":row["facultad"].c_str()},
+                           {"facultad_id",row["facultad_id"].is_null()?0:row["facultad_id"].as<int>()}});
+        return jsonResp(arr);
+    });
+
 
     CROW_ROUTE(app, "/api/auth/roles").methods("GET"_method)
     ([](const crow::request& req) {
@@ -134,6 +200,8 @@ int main() {
     ([](const crow::request& req) {
         int uid; std::string rol, nombre;
         if (!verifyJwt(req, uid, rol, nombre)) return jsonResp({{"error","No autorizado"}}, 401);
+        // Estudiante solo ve sus propios turnos
+        if (rol == "estudiante") return jsonResp(TurnoRepo::findByUsuario(uid));
         return jsonResp(TurnoRepo::findAll());
     });
 
@@ -183,6 +251,8 @@ int main() {
     ([](const crow::request& req) {
         int uid; std::string rol, nombre;
         if (!verifyJwt(req, uid, rol, nombre)) return jsonResp({{"error","No autorizado"}}, 401);
+        // Estudiante solo ve sus propios trámites
+        if (rol == "estudiante") return jsonResp(TramiteRepo::findByUsuarioId(uid));
         return jsonResp(TramiteRepo::findAll());
     });
 

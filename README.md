@@ -180,19 +180,38 @@ Documentos
 
 ### 🏛️ Módulo de Dependencias
 
-Representa la estructura organizacional de la universidad en otro **Árbol N-ario**:
+Representa el **organigrama oficial completo de la UTA** en un **Árbol N-ario** con 78 nodos reales. La interfaz muestra el árbol en modo colapsable (sin scroll excesivo), con búsqueda instantánea y un panel lateral de detalle:
 
 ```
-UTA
-├── Rectorado
-│   ├── DTIC
-│   └── Bienestar Universitario
-├── Facultad FISI
-│   ├── Carrera Software
-│   └── Carrera Sistemas
-└── Facultad FISEI
-    └── Carrera Electrónica
+Universidad Técnica de Ambato
+├── Rectorado (11 dependencias)
+│   ├── Secretaría General
+│   ├── Dirección Financiera
+│   ├── Dirección de Gestión de la Calidad
+│   └── ...
+├── Vicerrectorado Académico (6)
+│   ├── Dirección Académica
+│   └── Dirección de Investigación y Desarrollo
+├── Vicerrectorado Administrativo (3)
+├── Vicerrectorado de Investigación e Innovación (4)
+├── FISEI — Sistemas, Electrónica e Industrial (5 carreras)
+│   ├── Ingeniería Industrial
+│   ├── Ingeniería en Software
+│   ├── Tecnologías de la Información
+│   ├── Telecomunicaciones
+│   └── Automatización y Robótica
+├── FCA — Ciencias Administrativas (2 carreras)
+├── FCS — Ciencias de la Salud · Ingahurco (4 carreras)
+├── FCAG — Agropecuarias · Querochaca (2 carreras)
+└── Centros Universitarios (11 centros/direcciones)
 ```
+
+**Funcionalidades de la vista:**
+- 🔍 Búsqueda instantánea que abre automáticamente los nodos padres del resultado
+- ▶/▼ Colapsar/expandir ramas individualmente
+- ⊞ Botones "Expandir todo" y "Colapsar todo"
+- Panel lateral sticky con descripción, nivel jerárquico e ícono por nivel
+- Solo el Admin puede agregar nuevas dependencias
 
 ---
 
@@ -289,17 +308,39 @@ donde R = 6,371,000 metros (radio de la Tierra)
 
 ### Control de Acceso por Rol
 
-Cada endpoint de la API verifica el rol del usuario:
+Cada endpoint de la API verifica el rol del usuario. El backend filtra los datos en la consulta SQL — el estudiante nunca recibe información de otros usuarios:
 
 | Acción | Estudiante | Secretaria | Admin |
 |---|---|---|---|
+| Portal personalizado (Mi Portal) | ✅ propio | ❌ | ❌ |
+| Dashboard administrativo | ❌ | ✅ | ✅ |
 | Ver mapa del campus | ✅ | ✅ | ✅ |
 | Calcular ruta | ✅ | ✅ | ✅ |
+| **Editar mapa del campus** | ❌ (DOM eliminado) | ❌ | ✅ |
 | Sacar turno | ✅ | ✅ | ✅ |
+| Ver **sus propios** turnos | ✅ | — | — |
+| Ver **todos** los turnos | ❌ | ✅ | ✅ |
 | Atender turno siguiente | ❌ | ✅ | ✅ |
-| **Editar mapa del campus** | ❌ | ❌ | ✅ |
-| Registrar usuarios | ❌ | ❌ | ✅ |
+| Ver **sus propios** trámites | ✅ | — | — |
+| Ver **todos** los trámites | ❌ | ✅ | ✅ |
+| Ver historial global | ❌ | ✅ | ✅ |
+| Ver dependencias (lectura) | ✅ | ✅ | ✅ |
+| Gestionar dependencias | ❌ | ❌ | ✅ |
 | Ver reportes | ❌ | ❌ | ✅ |
+| Gestionar usuarios | ❌ | ❌ | ✅ |
+| Editar carrera/facultad de estudiante | ❌ | ❌ | ✅ |
+
+### Auto-registro de Estudiantes
+
+Cualquier persona puede crear su cuenta desde la pantalla de login sin necesidad de que un administrador la cree:
+
+1. Clic en el tab **"Registrarse"** en la pantalla de inicio
+2. Completa: nombre, apellido, cédula, email, **carrera** (lista completa UTA), contraseña
+3. El sistema crea el usuario con rol `estudiante` y genera su perfil académico
+4. Acceso inmediato: puede iniciar sesión de forma instantánea
+5. El Admin puede corregir la carrera/facultad desde el panel de administración si el estudiante se equivocó
+
+**Endpoint:** `POST /api/auth/register-student` (público, sin JWT)
 
 ---
 
@@ -367,27 +408,43 @@ Esto inicia tres contenedores:
 ```yaml
 # docker-compose.yml (simplificado)
 
-db:        # PostgreSQL 15
-  image: postgres:15
-  volumen: ./db/init.sql  # Script que crea tablas e inserta datos iniciales
+db:        # PostgreSQL 16
+  image: postgres:16-alpine
+  volumen: ./db/init.sql  # Crea tablas e inserta datos iniciales + organigrama UTA
 
 backend:   # C++ compilado en imagen Alpine
   build: ./backend
   depends_on: db
   port: 8080 (interno)
 
-frontend:  # Nginx sirviendo HTML/CSS/JS
+frontend:  # Nginx con HTTPS self-signed
   build: ./frontend
   depends_on: backend
-  port: 8090 (público)
+  ports:
+    - 8090 → 80  (redirige automáticamente a HTTPS)
+    - 8443 → 443 (HTTPS principal)
 ```
+
+### HTTPS y acceso en red local
+
+El sistema usa **certificados SSL auto-firmados** generados en tiempo de build. Nginx redirige automáticamente todo el tráfico HTTP a HTTPS:
+
+| URL | Descripción |
+|---|---|
+| `https://localhost:8443` | Acceso local (tu máquina) |
+| `http://localhost:8090` | HTTP → redirige a HTTPS |
+| `https://192.168.2.15:8443` | **Acceso desde red WiFi local** |
+
+> El navegador mostrará "Tu conexión no es privada" la primera vez (es normal con cert self-signed). Clic en **Avanzado → Continuar**.
+
+Nginx usa `server_name _` (comodín) para aceptar conexiones desde **cualquier IP**, lo que permite que todos los dispositivos en el mismo WiFi del salón accedan al sistema sin configuración adicional.
 
 ### Proceso de compilación del backend
 
 Al hacer `docker-compose build backend`:
 1. Docker descarga la imagen base Alpine Linux (muy pequeña, ~5MB)
 2. Instala las dependencias: `libpqxx`, `openssl`, `nlohmann-json`
-3. Compila el código C++ con `cmake` y `make`
+3. Compila el código C++ con `cmake` y `make -j$(nproc)` (paralelo)
 4. El ejecutable final (`smartcampus`) pesa ~3MB
 
 ---
@@ -395,28 +452,55 @@ Al hacer `docker-compose build backend`:
 ## Guía Rápida de Uso
 
 ### Acceso al sistema
-- **URL:** `http://localhost:8090`
-- **Admin:** `admin@uta.edu.ec` / `admin123`
+| URL | Descripción |
+|---|---|
+| `https://localhost:8443` | Acceso local |
+| `https://192.168.2.15:8443` | Acceso desde WiFi del salón |
+
+### Cuentas de demostración
+| Rol | Email | Contraseña |
+|---|---|---|
+| Administrador | `admin@uta.edu.ec` | `admin123` |
+| Secretaria | `secretaria@uta.edu.ec` | `admin123` |
+| Estudiante | `juan@uta.edu.ec` | `admin123` |
+
+### Registro de nuevo estudiante
+1. Ir a la pantalla de login → tab **"Registrarse"**
+2. Completar todos los campos (nombre, cédula, carrera de la lista UTA, contraseña)
+3. El sistema crea la cuenta instantáneamente con rol `estudiante`
 
 ### Como Administrador
 
-**Para configurar el mapa del campus:**
-1. Ir a **Mapa Campus** en el menú lateral
-2. Activar el tab **⚙️ Editar Campus** (visible solo para admin)
-3. Usar el buscador para navegar al campus UTA en el mapa real
-4. Clic en **"📍 Agregar punto"** → clic en el mapa → llenar formulario → Guardar
-5. Clic en **"🔗 Conectar"** → clic en Edificio A → clic en Edificio B para crear sendero
-6. Para eliminar: clic en cualquier marcador o línea → botón 🗑
+**Mapa del campus:**
+1. Ir a **Mapa Campus** → tab **⚙️ Editar Campus**
+2. Clic **"📍 Agregar punto"** → clic en mapa → llenar formulario → Guardar
+3. Clic **"🔗 Conectar"** → clic Nodo A → clic Nodo B para crear sendero
+4. Para eliminar: clic en marcador/línea → botón 🗑
 
-**Para gestionar usuarios:**
-- Ir a **Administración** para registrar nuevos usuarios y asignar roles
+**Gestionar estudiantes:**
+- Ir a **Administración** → lista de estudiantes → botón ✏️ para editar carrera/facultad
+
+**Dependencias:**
+- Ir a **Dependencias** → ver el organigrama completo de la UTA
+- Usar la búsqueda para encontrar facultades y oficinas
+- Botón **"+ Dependencia"** para agregar nodos al árbol
 
 ### Como Estudiante
 
-1. Entrar con credenciales de estudiante
-2. **Mapa Campus:** Ver ubicaciones y calcular ruta desde/hasta cualquier edificio
-3. **Turnos:** Sacar turno para atención en ventanilla
-4. **Trámites:** Iniciar una solicitud y ver su estado
+Al iniciar sesión, el estudiante es redirigido a **Mi Portal** (no al dashboard general):
+
+1. **Mi Portal:** Turno activo del día + últimos trámites propios + estado de la cola
+2. **Turnos:** Sacar turno para atención en ventanilla, ver historial propio
+3. **Mis Trámites:** Ver únicamente sus propias solicitudes (no las de otros)
+4. **Documentos:** Acceder al repositorio de documentos
+5. **Dependencias:** Ver el organigrama para saber a qué oficina dirigirse
+6. **Mapa Campus:** Calcular rutas entre edificios
+
+### Como Secretaria
+
+1. **Dashboard:** Ver estadísticas generales del sistema
+2. **Turnos:** Atender el siguiente en la cola con el botón "✅ Atender Siguiente"
+3. **Trámites:** Ver y gestionar todos los trámites, cambiar estados
 
 ---
 
@@ -426,14 +510,19 @@ Al hacer `docker-compose build backend`:
 |---|---|---|
 | Lenguaje backend | C++17 | Implementación real de estructuras de datos académicas |
 | Framework backend | Crow | Minimalista, headers-only, ideal para C++ |
-| Base de datos | PostgreSQL | Concurrencia real, ACID, robusto |
+| Base de datos | PostgreSQL 16 | Concurrencia real, ACID, robusto |
 | Mapas | Leaflet + OSM | Gratuito, open-source, sin API key |
 | Ruta más corta | Dijkstra propio | Algoritmo implementado en C++ para el proyecto |
-| Autenticación | JWT + BCRYPT | Estándar de la industria, sin estado en el servidor |
+| Autenticación | JWT + HS256 | Estándar de la industria, sin estado en el servidor |
+| Seguridad transporte | HTTPS + SSL self-signed | Cifrado en tránsito, acceso local y LAN |
 | Despliegue | Docker Compose | Reproducible en cualquier máquina |
 | Frontend | HTML/CSS/JS puro | Sin frameworks pesados, accesible desde cualquier PC |
+| Control de acceso | RBAC + filtrado BD | Estudiante solo ve sus propios datos |
+| Registro | Auto-registro público | Estudiantes crean cuenta sin intervención del admin |
+| Organigrama | Árbol N-ario — 78 nodos | Estructura oficial completa de la UTA |
 
 ---
 
 *Documentación generada para el proyecto SmartCampus UTA.*  
-*Universidad Técnica de Ambato — Facultad de Ingeniería en Sistemas.*
+*Universidad Técnica de Ambato — Facultad de Ingeniería en Sistemas.*  
+*Última actualización: Junio 2026*

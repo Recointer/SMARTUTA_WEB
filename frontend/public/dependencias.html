@@ -5,23 +5,70 @@
   <title>Dependencias — SmartCampus UTA</title>
   <link rel="stylesheet" href="/css/app.css">
   <style>
-    .org-tree { display:flex; flex-direction:column; align-items:center; }
-    .org-node {
+    /* ── Árbol compacto colapsable ──────────────────────────── */
+    .dep-search {
+      display: flex; gap: 10px; align-items: center;
       background: var(--bg-input); border: 1px solid var(--border);
-      border-radius: 10px; padding: 10px 18px; font-size: .825rem;
-      font-weight: 500; text-align:center; min-width:140px; max-width:200px;
-      cursor:pointer; transition: all .15s; position: relative;
+      border-radius: 10px; padding: 8px 14px; margin-bottom: 16px;
     }
-    .org-node:hover { border-color: var(--accent); background: rgba(37,99,235,.1); }
-    .org-node.root { background: linear-gradient(135deg, rgba(37,99,235,.2), rgba(124,58,237,.2)); border-color: var(--accent); font-size:.9rem; font-weight:700; }
-    .org-children { display:flex; gap:24px; justify-content:center; position:relative; }
-    .org-children::before {
-      content:''; position:absolute; top:0; left:50%; right:50%;
-      border-top: 2px solid var(--border);
+    .dep-search input {
+      flex: 1; background: none; border: none; outline: none;
+      color: var(--text); font-size: .9rem;
     }
-    .org-branch { display:flex; flex-direction:column; align-items:center; }
-    .org-line { width:2px; height:20px; background: var(--border); }
-    .org-h-line { height:2px; background:var(--border); position:absolute; top:0; }
+    .dep-tree { font-size: .85rem; }
+    .dep-node {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 8px; border-radius: 6px; cursor: pointer;
+      transition: background .12s; user-select: none; position: relative;
+    }
+    .dep-node:hover { background: rgba(37,99,235,.08); }
+    .dep-node.matched { background: rgba(250,204,21,.1); border-left: 3px solid #facc15; }
+    .dep-toggle {
+      width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .7rem; flex-shrink: 0; transition: transform .15s;
+      background: var(--bg-input);
+    }
+    .dep-toggle.open { background: rgba(37,99,235,.15); border-color: var(--accent); }
+    .dep-toggle.leaf  { border: none; background: none; opacity: .4; cursor: default; }
+    .dep-label { flex: 1; }
+    .dep-label .dep-name { font-weight: 500; }
+    .dep-label .dep-desc { font-size: .72rem; color: var(--text-muted); }
+    .dep-children { overflow: hidden; transition: max-height .2s ease; max-height: 0; }
+    .dep-children.open { max-height: 9999px; }
+    .dep-badge {
+      font-size: .65rem; padding: 2px 6px; border-radius: 10px;
+      background: rgba(37,99,235,.12); color: #60a5fa; flex-shrink: 0;
+    }
+    /* Niveles de indentación */
+    .dep-l0 { padding-left: 4px; }
+    .dep-l1 { padding-left: 20px; }
+    .dep-l2 { padding-left: 40px; }
+    .dep-l3 { padding-left: 60px; }
+    /* Íconos por nivel */
+    .icon-0 { color: #f59e0b; }
+    .icon-1 { color: #60a5fa; }
+    .icon-2 { color: #86efac; }
+    .icon-3 { color: #c4b5fd; }
+
+    /* Panel detalle lateral */
+    .dep-layout { display: grid; grid-template-columns: 1fr 320px; gap: 16px; align-items: start; }
+    @media(max-width: 900px) { .dep-layout { grid-template-columns: 1fr; } }
+    .detail-panel {
+      position: sticky; top: 16px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: 12px; padding: 20px;
+    }
+    .detail-panel.empty { display: flex; align-items: center; justify-content: center;
+      min-height: 200px; color: var(--text-muted); font-size: .85rem; }
+    .detail-title { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+    .detail-desc  { font-size: .82rem; color: var(--text-muted); margin-bottom: 16px; }
+    .detail-chip {
+      display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .72rem;
+      font-weight: 600; margin-bottom: 12px;
+    }
+    .chip-0 { background: rgba(245,158,11,.15); color: #f59e0b; }
+    .chip-1 { background: rgba(37,99,235,.15); color: #60a5fa; }
+    .chip-2 { background: rgba(134,239,172,.15); color: #86efac; }
   </style>
 </head>
 <body>
@@ -31,32 +78,47 @@
     <div class="topbar">
       <div class="topbar-title">🏛️ Estructura de Dependencias</div>
       <div id="admin-actions" style="display:none">
-        <button class="btn btn-primary" onclick="openModal()">+ Dependencia</button>
+        <button class="btn btn-primary btn-sm" onclick="openModal()">+ Dependencia</button>
       </div>
     </div>
     <div class="page">
-      <div class="card mb-16" style="border-left:4px solid var(--info)">
-        <div style="display:flex;align-items:center;gap:12px">
-          <span style="font-size:1.5rem">📐</span>
+
+      <!-- Badge estructura de datos -->
+      <div class="card mb-16" style="border-left:4px solid var(--info);padding:12px 16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:1.3rem">📐</span>
           <div>
-            <div style="font-weight:600;font-size:.9rem">Estructura: <span style="color:#67e8f9">Árbol N-ario</span></div>
-            <div class="text-muted" style="font-size:.8rem">La jerarquía universitaria modelada como árbol. UTA → Facultades → Departamentos → Carreras</div>
+            <div style="font-weight:600;font-size:.85rem">Estructura: <span style="color:#67e8f9">Árbol N-ario</span></div>
+            <div class="text-muted" style="font-size:.75rem">UTA → Facultades/Vicerrectorados → Departamentos/Carreras</div>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="expandAll()">⊞ Expandir todo</button>
+            <button class="btn btn-ghost btn-sm" onclick="collapseAll()">⊟ Colapsar</button>
           </div>
         </div>
       </div>
 
-      <!-- Vista árbol lista -->
-      <div class="grid-2" style="align-items:start">
-        <div class="card">
-          <div class="card-header"><span class="card-title">📋 Vista Lista</span></div>
-          <div class="tree" id="lista-deps">
+      <!-- Búsqueda -->
+      <div class="dep-search">
+        <span>🔍</span>
+        <input id="search-input" placeholder="Buscar facultad, carrera, dirección..." oninput="filterTree(this.value)">
+        <button class="btn btn-ghost btn-sm" onclick="clearSearch()" id="btn-clear-search" style="display:none">✕</button>
+      </div>
+
+      <!-- Layout: árbol + detalle -->
+      <div class="dep-layout">
+        <!-- Árbol colapsable -->
+        <div class="card" style="padding:12px">
+          <div class="dep-tree" id="dep-tree">
             <div class="loading-center"><span class="spinner"></span></div>
           </div>
         </div>
-        <div class="card">
-          <div class="card-header"><span class="card-title">🏛️ Organigrama</span></div>
-          <div id="organigrama" style="overflow-x:auto;padding:16px 8px">
-            <div class="loading-center"><span class="spinner"></span></div>
+
+        <!-- Panel detalle -->
+        <div class="detail-panel empty" id="detail-panel">
+          <div style="text-align:center">
+            <div style="font-size:2rem;margin-bottom:8px">🏛️</div>
+            <div>Selecciona un nodo<br>para ver detalles</div>
           </div>
         </div>
       </div>
@@ -96,66 +158,170 @@
 <script>
   requireAuth();
   renderSidebar('dependencias.html');
-  if (api.getUser().rol === 'admin') document.getElementById('admin-actions').style.display = 'block';
+  const isAdmin = api.getUser().rol === 'admin';
+  if (isAdmin) document.getElementById('admin-actions').style.display = 'block';
 
-  function renderListaNode(nodo, depth = 0) {
-    const pad = depth * 20;
-    const hasChildren = nodo.hijos && nodo.hijos.length > 0;
-    return `
-      <div style="padding:8px 12px 8px ${pad + 12}px;border-radius:6px;margin:2px 0;display:flex;align-items:center;gap:8px;
-                  ${depth===0?'background:rgba(37,99,235,.1);font-weight:700':''}">
-        <span>${depth===0?'🏛️':depth===1?'🏢':depth===2?'📚':'📌'}</span>
-        <div>
-          <div style="font-size:.875rem">${nodo.nombre}</div>
-          ${nodo.descripcion ? `<div style="font-size:.7rem;color:var(--text-muted)">${nodo.descripcion}</div>` : ''}
-        </div>
-      </div>
-      ${hasChildren ? nodo.hijos.map(h => renderListaNode(h, depth+1)).join('') : ''}`;
+  let flatData = [];
+  let treeRoot = null;
+
+  // ── Íconos por nivel ──────────────────────────────────────
+  const ICONS = ['🏛️','🏢','📚','📌'];
+  const LEVEL_LABELS = ['Universidad','Órgano/Facultad','Carrera/Dirección','Programa'];
+  const CHIP_CLASSES = ['chip-0','chip-1','chip-2','chip-2'];
+
+  // ── Construir árbol desde lista plana ─────────────────────
+  function buildTree(flat) {
+    const map = {};
+    flat.forEach(d => { map[d.id] = { ...d, hijos: [] }; });
+    let root = null;
+    flat.forEach(d => {
+      if (d.padre_id === -1) root = map[d.id];
+      else if (map[d.padre_id]) map[d.padre_id].hijos.push(map[d.id]);
+    });
+    return root;
   }
 
-  function renderOrgNode(nodo) {
-    const hasChildren = nodo.hijos && nodo.hijos.length > 0;
+  // ── Renderizar nodo ───────────────────────────────────────
+  function renderNode(node, level = 0) {
+    const hasChildren = node.hijos && node.hijos.length > 0;
+    const icon = ICONS[Math.min(level, ICONS.length-1)];
+    const childrenHtml = hasChildren
+      ? node.hijos.map(h => renderNode(h, level+1)).join('')
+      : '';
+
     return `
-      <div class="org-branch">
-        <div class="org-line"></div>
-        <div class="org-node${nodo.padre_id===-1?' root':''}" title="${nodo.descripcion||''}">
-          ${nodo.nombre}
+      <div class="dep-branch" data-id="${node.id}" data-level="${level}" data-name="${node.nombre.toLowerCase()}">
+        <div class="dep-node dep-l${Math.min(level,3)}" onclick="toggleNode(${node.id}, event)">
+          <span class="dep-toggle ${!hasChildren?'leaf':''}" id="tog-${node.id}">${hasChildren ? '▶' : '•'}</span>
+          <span class="icon-${Math.min(level,3)}">${icon}</span>
+          <div class="dep-label">
+            <div class="dep-name">${node.nombre}</div>
+            ${node.descripcion ? `<div class="dep-desc">${node.descripcion}</div>` : ''}
+          </div>
+          ${hasChildren ? `<span class="dep-badge">${node.hijos.length}</span>` : ''}
         </div>
-        ${hasChildren ? `
-          <div class="org-line"></div>
-          <div class="org-children">
-            ${nodo.hijos.map(h => renderOrgNode(h)).join('')}
-          </div>` : ''}
+        ${hasChildren ? `<div class="dep-children" id="ch-${node.id}">${childrenHtml}</div>` : ''}
       </div>`;
   }
 
-  async function loadData() {
-    const res = await api.get('/dependencias/arbol');
-    if (!res?.ok || !res.data) {
-      document.getElementById('lista-deps').innerHTML = '<div class="empty-state"><p>Sin datos</p></div>';
+  // ── Toggle colapsar/expandir ──────────────────────────────
+  function toggleNode(id, e) {
+    e.stopPropagation();
+    const ch = document.getElementById('ch-' + id);
+    const tog = document.getElementById('tog-' + id);
+    if (!ch) {
+      // Nodo hoja → mostrar detalle
+      const d = flatData.find(x => x.id === id);
+      if (d) showDetail(d);
       return;
     }
-    const root = res.data;
-    document.getElementById('lista-deps').innerHTML = renderListaNode(root);
-    document.getElementById('organigrama').innerHTML = `
-      <div style="display:flex;justify-content:center">
-        <div class="org-branch" style="padding-top:0">
-          <div class="org-node root">${root.nombre}</div>
-          ${root.hijos?.length ? `
-            <div class="org-line"></div>
-            <div class="org-children">
-              ${root.hijos.map(h => renderOrgNode(h)).join('')}
-            </div>` : ''}
-        </div>
-      </div>`;
+    const open = ch.classList.toggle('open');
+    tog.classList.toggle('open', open);
+    tog.textContent = open ? '▼' : '▶';
+    // Mostrar detalle del nodo
+    const d = flatData.find(x => x.id === id);
+    if (d) showDetail(d);
+  }
 
-    // Load flat list for select
-    const flatRes = await api.get('/dependencias');
-    if (flatRes?.ok) {
-      document.getElementById('dep-padre').innerHTML =
-        `<option value="-1">Sin padre (raíz)</option>` +
-        flatRes.data.map(d => `<option value="${d.id}">${'&nbsp;'.repeat(d.nivel*4)}${d.nombre}</option>`).join('');
+  // ── Detalle lateral ───────────────────────────────────────
+  function showDetail(d) {
+    const level = d.nivel !== undefined ? d.nivel : 0;
+    const label = LEVEL_LABELS[Math.min(level, LEVEL_LABELS.length-1)];
+    const chipClass = CHIP_CLASSES[Math.min(level, CHIP_CLASSES.length-1)];
+    const icon = ICONS[Math.min(level, ICONS.length-1)];
+    const panel = document.getElementById('detail-panel');
+    panel.className = 'detail-panel';
+    panel.innerHTML = `
+      <div style="font-size:2.5rem;margin-bottom:8px;text-align:center">${icon}</div>
+      <div class="detail-chip ${chipClass}">${label}</div>
+      <div class="detail-title">${d.nombre}</div>
+      <div class="detail-desc">${d.descripcion || 'Sin descripción'}</div>
+      <div style="font-size:.75rem;color:var(--text-muted)">
+        <div style="margin-bottom:4px">📊 Nivel jerárquico: <strong>${level}</strong></div>
+        ${isAdmin ? `<button class="btn btn-ghost btn-sm w-full" style="margin-top:10px" onclick="prepararEdicion(${d.id})">✏️ Editar</button>` : ''}
+      </div>`;
+  }
+
+  // ── Expandir / colapsar todo ──────────────────────────────
+  function expandAll() {
+    document.querySelectorAll('.dep-children').forEach(el => el.classList.add('open'));
+    document.querySelectorAll('.dep-toggle:not(.leaf)').forEach(el => {
+      el.classList.add('open'); el.textContent = '▼';
+    });
+  }
+
+  function collapseAll() {
+    document.querySelectorAll('.dep-children').forEach(el => el.classList.remove('open'));
+    document.querySelectorAll('.dep-toggle:not(.leaf)').forEach(el => {
+      el.classList.remove('open'); el.textContent = '▶';
+    });
+  }
+
+  // ── Búsqueda / filtro ─────────────────────────────────────
+  function filterTree(query) {
+    document.getElementById('btn-clear-search').style.display = query ? 'block' : 'none';
+    const q = query.toLowerCase().trim();
+    if (!q) {
+      document.querySelectorAll('.dep-node').forEach(el => el.classList.remove('matched'));
+      collapseAll(); return;
     }
+    // Marcar matches y abrir sus padres
+    document.querySelectorAll('.dep-branch').forEach(branch => {
+      const name = branch.dataset.name || '';
+      const node = branch.querySelector('.dep-node');
+      if (name.includes(q)) {
+        node.classList.add('matched');
+        // Abrir todos los ancestros
+        let parent = branch.parentElement?.closest('.dep-branch');
+        while (parent) {
+          const id = parent.dataset.id;
+          const ch  = document.getElementById('ch-' + id);
+          const tog = document.getElementById('tog-' + id);
+          if (ch) { ch.classList.add('open'); if(tog){tog.classList.add('open');tog.textContent='▼';} }
+          parent = parent.parentElement?.closest('.dep-branch');
+        }
+      } else {
+        node.classList.remove('matched');
+      }
+    });
+  }
+
+  function clearSearch() {
+    document.getElementById('search-input').value = '';
+    filterTree('');
+  }
+
+  // ── Cargar datos ─────────────────────────────────────────
+  async function loadData() {
+    const [flatRes, /* arbolRes */] = await Promise.all([
+      api.get('/dependencias'),
+    ]);
+
+    if (!flatRes?.ok) {
+      document.getElementById('dep-tree').innerHTML = '<div class="empty-state"><p>Sin datos</p></div>';
+      return;
+    }
+
+    flatData = flatRes.data;
+    treeRoot = buildTree(flatData);
+
+    if (!treeRoot) {
+      document.getElementById('dep-tree').innerHTML = '<div class="empty-state"><p>Sin datos de árbol</p></div>';
+      return;
+    }
+
+    document.getElementById('dep-tree').innerHTML = renderNode(treeRoot, 0);
+
+    // Abrir primer nivel automáticamente
+    const rootId = treeRoot.id;
+    const ch = document.getElementById('ch-' + rootId);
+    const tog = document.getElementById('tog-' + rootId);
+    if (ch) { ch.classList.add('open'); if(tog){tog.classList.add('open');tog.textContent='▼';} }
+
+    // Select para modal
+    document.getElementById('dep-padre').innerHTML =
+      `<option value="-1">Sin padre (raíz)</option>` +
+      flatData.map(d => `<option value="${d.id}">${'·'.repeat(d.nivel*2)} ${d.nombre}</option>`).join('');
   }
 
   async function crearDependencia() {
