@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Mi Reporte — SmartCampus UTA</title>
+  <meta name="description" content="Reporte integrado de actividad del estudiante en SmartCampus UTA.">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    /* ── Botón de impresión ─────── */
+    .print-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 20px; margin-bottom: 24px;
+      gap: 16px;
+    }
+    .print-bar h2 { font-size: 1rem; font-weight: 600; margin: 0; }
+    .print-bar p  { font-size: .8rem; color: var(--text-muted); margin: 4px 0 0; }
+
+    /* ── Tarjetas del reporte ─────── */
+    .report-header {
+      background: linear-gradient(135deg, #1e3a6e 0%, #2d1b69 100%);
+      border-radius: 16px; padding: 32px;
+      color: #fff; margin-bottom: 24px;
+      display: flex; align-items: center; gap: 24px;
+    }
+    .report-avatar {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: rgba(255,255,255,.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; font-weight: 700; flex-shrink: 0;
+    }
+    .report-title    { font-size: 1.4rem; font-weight: 800; }
+    .report-subtitle { font-size: .85rem; opacity: .8; margin-top: 4px; }
+    .report-meta     { font-size: .78rem; opacity: .65; margin-top: 8px; }
+
+    /* ── Sección de diagrama ─────── */
+    .flow-diagram {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0; flex-wrap: wrap; margin: 16px 0;
+    }
+    .flow-node {
+      display: flex; flex-direction: column; align-items: center;
+      background: var(--bg-input); border: 2px solid var(--border);
+      border-radius: 12px; padding: 14px 18px; min-width: 110px;
+      text-align: center; position: relative;
+    }
+    .flow-node.active  { border-color: var(--accent); background: rgba(37,99,235,.1); }
+    .flow-node.success { border-color: var(--success); background: rgba(16,185,129,.08); }
+    .flow-node.warning { border-color: var(--warning); background: rgba(245,158,11,.08); }
+    .flow-node.muted   { border-color: var(--border); opacity: .55; }
+    .flow-node .fn-icon { font-size: 1.6rem; }
+    .flow-node .fn-label { font-size: .72rem; font-weight: 600; margin-top: 6px; }
+    .flow-node .fn-value { font-size: 1rem; font-weight: 800; margin-top: 2px; }
+    .flow-arrow {
+      font-size: 1.4rem; color: var(--text-muted);
+      padding: 0 6px; flex-shrink: 0;
+    }
+
+    /* ── Tabla de trámites ─────── */
+    .report-table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    .report-table th {
+      text-align: left; padding: 10px 12px;
+      border-bottom: 2px solid var(--border);
+      color: var(--text-muted); font-weight: 600; font-size: .75rem;
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+    .report-table td {
+      padding: 10px 12px; border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .report-table tr:last-child td { border-bottom: none; }
+
+    /* ── Estado de ánimo ─────── */
+    .stat-ring {
+      display: grid; grid-template-columns: repeat(3,1fr);
+      gap: 12px; margin-top: 4px;
+    }
+    .stat-cell {
+      background: var(--bg-input); border-radius: 10px;
+      padding: 14px; text-align: center;
+      border: 1px solid var(--border);
+    }
+    .stat-cell .sc-value { font-size: 1.8rem; font-weight: 800; }
+    .stat-cell .sc-label { font-size: .75rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* ── PRINT STYLES ─────────────────────── */
+    @media print {
+      body { background: #fff !important; color: #111 !important; }
+      .app-layout { display: block !important; }
+      .sidebar, .topbar, .print-bar { display: none !important; }
+      .main-content { padding: 0 !important; }
+      .page { padding: 0 !important; }
+      .card { border: 1px solid #ccc !important; break-inside: avoid; }
+      .report-header {
+        background: linear-gradient(135deg, #1e3a6e, #2d1b69) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .flow-node.active  { border-color: #2563eb !important; }
+      .flow-node.success { border-color: #10b981 !important; }
+      .flow-node.warning { border-color: #f59e0b !important; }
+      .stat-cell { border: 1px solid #ccc !important; }
+      a { color: inherit !important; text-decoration: none !important; }
+
+      /* Pie de página de impresión */
+      body::after {
+        content: "Reporte generado por SmartCampus UTA — Universidad Técnica de Ambato";
+        display: block;
+        text-align: center;
+        font-size: 10px;
+        color: #999;
+        margin-top: 32px;
+        padding-top: 12px;
+        border-top: 1px solid #eee;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">📄 Mi Reporte</div>
+      <div class="topbar-actions">
+        <span id="topbar-time" class="text-muted" style="font-size:.8rem"></span>
+      </div>
+    </div>
+    <div class="page">
+
+      <!-- Barra de acción -->
+      <div class="print-bar">
+        <div>
+          <h2>📄 Reporte Integrado de Actividad</h2>
+          <p>Resumen unificado de turnos, trámites y perfil académico — listo para imprimir o exportar como PDF.</p>
+        </div>
+        <div style="display:flex;gap:10px;flex-shrink:0">
+          <button class="btn btn-ghost btn-sm" onclick="loadAll()">🔄 Actualizar</button>
+          <button class="btn btn-primary" onclick="imprimirPDF()">🖨️ Exportar PDF</button>
+        </div>
+      </div>
+
+      <!-- Cabecera del reporte (se imprime) -->
+      <div class="report-header" id="report-header">
+        <div class="report-avatar" id="rpt-avatar">?</div>
+        <div>
+          <div class="report-title" id="rpt-nombre">Cargando...</div>
+          <div class="report-subtitle" id="rpt-carrera">Estudiante UTA</div>
+          <div class="report-meta" id="rpt-meta">
+            🏫 Universidad Técnica de Ambato &nbsp;·&nbsp; Campus Huachi
+          </div>
+          <div class="report-meta" id="rpt-fecha"></div>
+        </div>
+      </div>
+
+      <!-- Diagrama de flujo unificado -->
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-header">
+          <span class="card-title">🔗 Diagrama de Actividad — Módulos del Sistema</span>
+        </div>
+        <p style="font-size:.8rem;color:var(--text-muted);margin:0 0 16px">
+          Este diagrama muestra el estado actual del estudiante en cada módulo del sistema, unificando la información en tiempo real.
+        </p>
+        <div class="flow-diagram" id="flow-diagram">
+          <div class="loading-center"><span class="spinner"></span></div>
+        </div>
+      </div>
+
+      <!-- Estadísticas rápidas -->
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-header">
+          <span class="card-title">📊 Estadísticas del Estudiante</span>
+        </div>
+        <div class="stat-ring" id="stat-ring">
+          <div class="loading-center" style="grid-column:1/-1"><span class="spinner"></span></div>
+        </div>
+      </div>
+
+      <!-- Historial de turnos -->
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-header">
+          <span class="card-title">🎫 Historial de Turnos</span>
+          <span class="text-muted" style="font-size:.75rem" id="turnos-count">—</span>
+        </div>
+        <div id="turnos-table-container">
+          <div class="loading-center"><span class="spinner"></span></div>
+        </div>
+      </div>
+
+      <!-- Historial de trámites -->
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-header">
+          <span class="card-title">📋 Historial de Trámites</span>
+          <span class="text-muted" style="font-size:.75rem" id="tramites-count">—</span>
+        </div>
+        <div id="tramites-table-container">
+          <div class="loading-center"><span class="spinner"></span></div>
+        </div>
+      </div>
+
+      <!-- Información del campus -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🏛️ Información Institucional</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:.85rem" id="info-institucional">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div><strong>🏫 Institución:</strong> Universidad Técnica de Ambato</div>
+            <div><strong>📍 Campus:</strong> Huachi — Ambato, Ecuador</div>
+            <div><strong>🌐 Sistema:</strong> SmartCampus UTA Web</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div><strong>📡 URL de Acceso:</strong> https://10.85.7.56:8443</div>
+            <div><strong>🛡️ Seguridad:</strong> HTTPS + JWT HS256</div>
+            <div><strong>🗄️ Base de Datos:</strong> PostgreSQL 16</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page -->
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/api.js"></script>
+<script>
+  requireAuth();
+  if (api.getUser()?.rol !== 'estudiante') window.location.href = '/dashboard.html';
+  renderSidebar('mi-reporte.html');
+
+  const user = api.getUser();
+
+  // Clock
+  const tick = () => { document.getElementById('topbar-time').textContent = new Date().toLocaleString('es-EC'); };
+  tick(); setInterval(tick, 1000);
+
+  // Fecha actual formateada
+  const ahora = new Date();
+  document.getElementById('rpt-fecha').textContent =
+    '📅 Generado el ' + ahora.toLocaleDateString('es-EC', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) +
+    ' a las ' + ahora.toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' });
+
+  // Avatar e info básica
+  const initial = (user.nombre || 'E')[0].toUpperCase();
+  document.getElementById('rpt-avatar').textContent = initial;
+  document.getElementById('rpt-nombre').textContent = user.nombre + ' ' + (user.apellido || '');
+
+  // --- Helpers ----------------------------------------------------------------
+  function estadoColor(e) {
+    const m = { pendiente:'var(--warning)', en_proceso:'var(--accent)', completado:'var(--success)', atendido:'var(--success)', rechazado:'var(--danger)' };
+    return m[e] || 'var(--text-muted)';
+  }
+  function estadoEmoji(e) {
+    const m = { pendiente:'⏳', en_proceso:'⚙️', completado:'✅', atendido:'✅', rechazado:'❌' };
+    return m[e] || '•';
+  }
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('es-EC', { day:'2-digit', month:'short', year:'numeric' });
+  }
+
+  // --- Cargar datos -----------------------------------------------------------
+  let dataTurnos   = [];
+  let dataTramites = [];
+
+  async function loadAll() {
+    await Promise.all([fetchTurnos(), fetchTramites()]);
+    renderFlowDiagram();
+    renderStats();
+  }
+
+  async function fetchTurnos() {
+    const res = await api.get('/turnos');
+    dataTurnos = (res?.ok && Array.isArray(res.data)) ? res.data : [];
+    renderTurnosTable();
+  }
+
+  async function fetchTramites() {
+    const res = await api.get('/tramites');
+    dataTramites = (res?.ok && Array.isArray(res.data)) ? res.data : [];
+    renderTramitesTable();
+  }
+
+  // --- Diagrama de flujo ------------------------------------------------------
+  function renderFlowDiagram() {
+    const container = document.getElementById('flow-diagram');
+
+    const totalTurnos   = dataTurnos.length;
+    const turnoPendiente = dataTurnos.find(t => t.estado === 'pendiente');
+    const turnoAtendido = dataTurnos.filter(t => t.estado === 'atendido').length;
+
+    const totalTramites   = dataTramites.length;
+    const tramitesPend    = dataTramites.filter(t => t.estado === 'pendiente').length;
+    const tramitesComp    = dataTramites.filter(t => t.estado === 'completado').length;
+
+    const nodes = [
+      {
+        icon: '👤',
+        label: 'Perfil',
+        value: user.nombre.split(' ')[0],
+        cls: 'active'
+      },
+      { arrow: true },
+      {
+        icon: '🎫',
+        label: 'Turno Activo',
+        value: turnoPendiente ? '#' + turnoPendiente.numero_turno : '—',
+        cls: turnoPendiente ? 'warning' : 'muted'
+      },
+      { arrow: true },
+      {
+        icon: '✅',
+        label: 'Atendidos',
+        value: turnoAtendido,
+        cls: turnoAtendido > 0 ? 'success' : 'muted'
+      },
+      { arrow: true },
+      {
+        icon: '📋',
+        label: 'Trámites',
+        value: totalTramites,
+        cls: totalTramites > 0 ? 'active' : 'muted'
+      },
+      { arrow: true },
+      {
+        icon: '✔️',
+        label: 'Completados',
+        value: tramitesComp,
+        cls: tramitesComp > 0 ? 'success' : 'muted'
+      },
+    ];
+
+    container.innerHTML = nodes.map(n => {
+      if (n.arrow) return `<div class="flow-arrow">→</div>`;
+      return `
+        <div class="flow-node ${n.cls}">
+          <span class="fn-icon">${n.icon}</span>
+          <span class="fn-label">${n.label}</span>
+          <span class="fn-value">${n.value}</span>
+        </div>`;
+    }).join('');
+  }
+
+  // --- Estadísticas -----------------------------------------------------------
+  function renderStats() {
+    const totalTurnos   = dataTurnos.length;
+    const turnoAtendido = dataTurnos.filter(t => t.estado === 'atendido').length;
+    const tramitesComp  = dataTramites.filter(t => t.estado === 'completado').length;
+    const tramitesPend  = dataTramites.filter(t => t.estado === 'pendiente').length;
+    const tramitesTotal = dataTramites.length;
+    const eficiencia    = tramitesTotal ? Math.round((tramitesComp / tramitesTotal) * 100) : 0;
+
+    document.getElementById('stat-ring').innerHTML = `
+      <div class="stat-cell">
+        <div class="sc-value" style="color:var(--accent)">${totalTurnos}</div>
+        <div class="sc-label">🎫 Turnos Totales</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-value" style="color:var(--success)">${turnoAtendido}</div>
+        <div class="sc-label">✅ Turnos Atendidos</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-value" style="color:var(--warning)">${tramitesPend}</div>
+        <div class="sc-label">⏳ Trámites Pendientes</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-value" style="color:var(--success)">${tramitesComp}</div>
+        <div class="sc-label">📋 Trámites Completados</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-value">${tramitesTotal}</div>
+        <div class="sc-label">📊 Trámites Totales</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-value" style="color:${eficiencia>=70?'var(--success)':'var(--warning)'}">${eficiencia}%</div>
+        <div class="sc-label">⚡ Tasa de Resolución</div>
+      </div>`;
+  }
+
+  // --- Tabla de Turnos --------------------------------------------------------
+  function renderTurnosTable() {
+    const container = document.getElementById('turnos-table-container');
+    document.getElementById('turnos-count').textContent = dataTurnos.length + ' registros';
+
+    if (!dataTurnos.length) {
+      container.innerHTML = `<div class="empty-state"><div class="icon">🎫</div><p>Sin turnos registrados aún</p></div>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Turno</th>
+            <th>Tipo de Trámite</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${dataTurnos.map((t, i) => `
+            <tr>
+              <td style="color:var(--text-muted)">${i + 1}</td>
+              <td><strong>#${t.numero_turno}</strong></td>
+              <td>${t.tipo_tramite || 'General'}</td>
+              <td>${fmtDate(t.created_at)}</td>
+              <td>
+                <span style="color:${estadoColor(t.estado)};font-weight:600">
+                  ${estadoEmoji(t.estado)} ${t.estado}
+                </span>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  // --- Tabla de Trámites ------------------------------------------------------
+  function renderTramitesTable() {
+    const container = document.getElementById('tramites-table-container');
+    document.getElementById('tramites-count').textContent = dataTramites.length + ' registros';
+
+    if (!dataTramites.length) {
+      container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>Sin trámites registrados aún</p></div>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Tipo de Trámite</th>
+            <th>Descripción</th>
+            <th>Fecha de Inicio</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${dataTramites.map((t, i) => `
+            <tr>
+              <td style="color:var(--text-muted)">${i + 1}</td>
+              <td><strong>${t.tipo_tramite || 'General'}</strong></td>
+              <td style="color:var(--text-muted);font-size:.8rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                ${t.descripcion || '—'}
+              </td>
+              <td>${fmtDate(t.created_at)}</td>
+              <td>
+                <span style="color:${estadoColor(t.estado)};font-weight:600">
+                  ${estadoEmoji(t.estado)} ${t.estado}
+                </span>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  // --- Exportar PDF -----------------------------------------------------------
+  function imprimirPDF() {
+    // Actualizar fecha justo antes de imprimir
+    const ahora = new Date();
+    document.getElementById('rpt-fecha').textContent =
+      '📅 Generado el ' + ahora.toLocaleDateString('es-EC', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) +
+      ' a las ' + ahora.toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' });
+    window.print();
+  }
+
+  // Arrancar
+  loadAll();
+</script>
+</body>
+</html>

@@ -2,31 +2,184 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Reportes — SmartCampus UTA</title>
+  <title>Reportes del Sistema — SmartCampus UTA</title>
   <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .print-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; gap: 16px;
+    }
+    .print-bar h2 { font-size: 1rem; font-weight: 600; margin: 0; }
+    .print-bar p  { font-size: .8rem; color: var(--text-muted); margin: 4px 0 0; }
+
+    .report-header-admin {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      border-radius: 16px; padding: 32px; color: #fff; margin-bottom: 24px;
+      display: flex; align-items: center; justify-content: space-between; gap: 24px;
+    }
+    .rha-logo { font-size: 3rem; }
+    .rha-title { font-size: 1.5rem; font-weight: 800; }
+    .rha-sub   { font-size: .85rem; opacity: .75; margin-top: 6px; }
+    .rha-meta  { font-size: .75rem; opacity: .55; margin-top: 8px; }
+    .rha-badge {
+      background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.2);
+      border-radius: 8px; padding: 8px 16px; font-size: .8rem; font-weight: 600;
+    }
+
+    /* Barras horizontales */
+    .bar-row { margin-bottom: 14px; }
+    .bar-label { display: flex; justify-content: space-between; font-size:.825rem; margin-bottom: 4px; }
+    .bar-track { height: 10px; background: var(--bg-input); border-radius: 5px; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 5px; transition: width .6s ease; }
+
+    /* Tabla reporte */
+    .rpt-table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    .rpt-table th {
+      text-align: left; padding: 10px 12px;
+      border-bottom: 2px solid var(--border);
+      color: var(--text-muted); font-weight: 600; font-size: .73rem;
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+    .rpt-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .rpt-table tr:last-child td { border-bottom: none; }
+    .rpt-table tr:hover td { background: var(--bg-input); }
+
+    /* KPI grid */
+    .kpi-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-bottom: 24px; }
+    .kpi-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px; text-align: center;
+    }
+    .kpi-val   { font-size: 2rem; font-weight: 800; }
+    .kpi-label { font-size: .75rem; color: var(--text-muted); margin-top: 6px; }
+    .kpi-icon  { font-size: 1.4rem; margin-bottom: 6px; }
+    .kpi-card.accent  { border-color: var(--accent); }
+    .kpi-card.success { border-color: var(--success); }
+    .kpi-card.warning { border-color: var(--warning); }
+    .kpi-card.purple  { border-color: #7c3aed; }
+    .kpi-card.cyan    { border-color: #06b6d4; }
+
+    /* Rol badge */
+    .role-chip {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: .72rem; font-weight: 600;
+    }
+    .role-admin      { background: rgba(124,58,237,.15); color: #7c3aed; }
+    .role-secretaria { background: rgba(6,182,212,.15);  color: #06b6d4; }
+    .role-estudiante { background: rgba(37,99,235,.15);  color: var(--accent); }
+
+    @media print {
+      body { background: #fff !important; color: #111 !important; }
+      .app-layout { display: block !important; }
+      .sidebar, .topbar, .print-bar { display: none !important; }
+      .main-content, .page { padding: 0 !important; }
+      .card { border: 1px solid #ccc !important; break-inside: avoid; page-break-inside: avoid; }
+      .report-header-admin {
+        background: linear-gradient(135deg,#1a1a2e,#0f3460) !important;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+      .kpi-grid { grid-template-columns: repeat(5,1fr) !important; }
+      .kpi-card { border: 1px solid #ccc !important; }
+      .bar-track { background: #eee !important; }
+      .rpt-table tr:hover td { background: transparent !important; }
+      body::after {
+        content: "SmartCampus UTA — Reporte Administrativo · Universidad Técnica de Ambato";
+        display: block; text-align: center;
+        font-size: 10px; color: #999; margin-top: 32px;
+        padding-top: 12px; border-top: 1px solid #eee;
+      }
+    }
+  </style>
 </head>
 <body>
 <div class="app-layout">
   <aside class="sidebar" id="sidebar"></aside>
   <div class="main-content">
     <div class="topbar">
-      <div class="topbar-title">📊 Reportes y Estadísticas</div>
+      <div class="topbar-title">📊 Reportes del Sistema</div>
       <div class="topbar-actions">
-        <button onclick="loadAll()" class="btn btn-ghost btn-sm">🔄 Actualizar</button>
+        <span id="topbar-time" class="text-muted" style="font-size:.8rem"></span>
       </div>
     </div>
     <div class="page">
-      <div class="stats-grid" id="stats-generales"></div>
-      <div class="grid-2 mt-24">
-        <div class="card">
-          <div class="card-header"><span class="card-title">🎫 Turnos por tipo</span></div>
-          <div id="reporte-turnos"></div>
+
+      <!-- Barra de acciones -->
+      <div class="print-bar">
+        <div>
+          <h2>📊 Reporte Administrativo del Sistema</h2>
+          <p>Estadísticas completas: usuarios, turnos, trámites y actividad operacional.</p>
         </div>
-        <div class="card">
-          <div class="card-header"><span class="card-title">📋 Trámites por estado</span></div>
-          <div id="reporte-tramites"></div>
+        <div style="display:flex;gap:10px;flex-shrink:0">
+          <button class="btn btn-ghost btn-sm" onclick="loadAll()">🔄 Actualizar</button>
+          <button class="btn btn-primary" onclick="exportarPDF()">🖨️ Exportar PDF</button>
         </div>
       </div>
+
+      <!-- Cabecera del reporte -->
+      <div class="report-header-admin">
+        <div>
+          <div class="rha-logo">🏛️</div>
+          <div class="rha-title">Reporte Administrativo</div>
+          <div class="rha-sub">SmartCampus UTA — Panel de Control del Sistema</div>
+          <div class="rha-meta" id="rpt-admin-meta"></div>
+        </div>
+        <div style="text-align:right">
+          <div class="rha-badge">⚙️ Rol: Administrador</div>
+          <div class="rha-meta" style="margin-top:12px" id="rpt-admin-fecha"></div>
+        </div>
+      </div>
+
+      <!-- KPIs principales -->
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="loading-center" style="grid-column:1/-1"><span class="spinner"></span></div>
+      </div>
+
+      <!-- Barras: Turnos por tipo + Trámites por estado -->
+      <div class="grid-2 mb-24">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🎫 Turnos por Tipo de Trámite</span>
+            <span class="text-muted" style="font-size:.75rem" id="turnos-bar-count">—</span>
+          </div>
+          <div id="turnos-bar"><div class="loading-center"><span class="spinner"></span></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📋 Trámites por Estado</span>
+            <span class="text-muted" style="font-size:.75rem" id="tramites-bar-count">—</span>
+          </div>
+          <div id="tramites-bar"><div class="loading-center"><span class="spinner"></span></div></div>
+        </div>
+      </div>
+
+      <!-- Lista de usuarios del sistema -->
+      <div class="card mb-24">
+        <div class="card-header">
+          <span class="card-title">👥 Usuarios del Sistema</span>
+          <span class="text-muted" style="font-size:.75rem" id="usuarios-count">—</span>
+        </div>
+        <div id="usuarios-tabla"><div class="loading-center"><span class="spinner"></span></div></div>
+      </div>
+
+      <!-- Todos los trámites -->
+      <div class="card mb-24">
+        <div class="card-header">
+          <span class="card-title">📋 Todos los Trámites</span>
+          <span class="text-muted" style="font-size:.75rem" id="tramites-total-count">—</span>
+        </div>
+        <div id="tramites-tabla"><div class="loading-center"><span class="spinner"></span></div></div>
+      </div>
+
+      <!-- Turnos de hoy -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🎫 Todos los Turnos</span>
+          <span class="text-muted" style="font-size:.75rem" id="turnos-count">—</span>
+        </div>
+        <div id="turnos-tabla"><div class="loading-center"><span class="spinner"></span></div></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -34,47 +187,155 @@
 <script src="/js/api.js"></script>
 <script>
   requireAuth();
+  requireRole('admin');
   renderSidebar('reportes.html');
 
-  function renderBar(items, labelKey, valueKey, color = '#3b82f6') {
-    if (!items.length) return '<div class="empty-state"><p>Sin datos</p></div>';
-    const max = Math.max(...items.map(i => i[valueKey]));
+  const tick = () => { document.getElementById('topbar-time').textContent = new Date().toLocaleString('es-EC'); };
+  tick(); setInterval(tick, 1000);
+
+  const ahora = new Date();
+  const user  = api.getUser();
+  document.getElementById('rpt-admin-meta').textContent = '👤 ' + user.nombre;
+  document.getElementById('rpt-admin-fecha').textContent =
+    '📅 ' + ahora.toLocaleDateString('es-EC',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) +
+    ' · ' + ahora.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});
+
+  // helpers
+  function estadoColor(e) {
+    return {pendiente:'var(--warning)',en_proceso:'var(--accent)',completado:'var(--success)',atendido:'var(--success)',rechazado:'#ef4444'}[e]||'var(--text-muted)';
+  }
+  function estadoEmoji(e) {
+    return {pendiente:'⏳',en_proceso:'⚙️',completado:'✅',atendido:'✅',rechazado:'❌'}[e]||'•';
+  }
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('es-EC',{day:'2-digit',month:'short',year:'numeric'});
+  }
+  function renderBar(items, labelKey, valueKey, color) {
+    if (!items || !items.length) return '<div class="empty-state"><p>Sin datos</p></div>';
+    const max = Math.max(...items.map(i => +i[valueKey]));
     return items.map(item => `
-      <div style="margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;font-size:.825rem;margin-bottom:4px">
-          <span>${item[labelKey]}</span>
-          <strong>${item[valueKey]}</strong>
-        </div>
-        <div style="height:8px;background:var(--bg-input);border-radius:4px;overflow:hidden">
-          <div style="height:100%;width:${(item[valueKey]/max*100).toFixed(0)}%;background:${color};border-radius:4px;transition:width .5s ease"></div>
-        </div>
+      <div class="bar-row">
+        <div class="bar-label"><span>${item[labelKey]}</span><strong>${item[valueKey]}</strong></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(item[valueKey]/max*100).toFixed(0)}%;background:${color}"></div></div>
       </div>`).join('');
   }
 
   async function loadAll() {
-    const [genRes, turnosRes, tramitesRes] = await Promise.all([
+    const [genRes, turnosApiRes, tramitesApiRes, usuariosRes, todosT, todosR] = await Promise.all([
       api.get('/reportes/generales'),
       api.get('/reportes/turnos'),
       api.get('/reportes/tramites'),
+      api.get('/usuarios'),
+      api.get('/tramites'),
+      api.get('/turnos'),
     ]);
 
+    // KPIs
     if (genRes?.ok) {
       const d = genRes.data;
-      document.getElementById('stats-generales').innerHTML = `
-        <div class="stat-card"><div class="stat-value">${d.usuarios}</div><div class="stat-label">Usuarios</div><div class="stat-icon">👤</div></div>
-        <div class="stat-card green"><div class="stat-value">${d.estudiantes}</div><div class="stat-label">Estudiantes</div><div class="stat-icon">🎓</div></div>
-        <div class="stat-card yellow"><div class="stat-value">${d.tramites}</div><div class="stat-label">Trámites totales</div><div class="stat-icon">📋</div></div>
-        <div class="stat-card cyan"><div class="stat-value">${d.turnos_hoy}</div><div class="stat-label">Turnos hoy</div><div class="stat-icon">🎫</div></div>
-        <div class="stat-card"><div class="stat-value">${d.documentos}</div><div class="stat-label">Documentos</div><div class="stat-icon">📁</div></div>`;
+      document.getElementById('kpi-grid').innerHTML = `
+        <div class="kpi-card accent">
+          <div class="kpi-icon">👤</div>
+          <div class="kpi-val" style="color:var(--accent)">${d.usuarios||0}</div>
+          <div class="kpi-label">Usuarios Totales</div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-icon">🎓</div>
+          <div class="kpi-val" style="color:var(--success)">${d.estudiantes||0}</div>
+          <div class="kpi-label">Estudiantes</div>
+        </div>
+        <div class="kpi-card warning">
+          <div class="kpi-icon">📋</div>
+          <div class="kpi-val" style="color:var(--warning)">${d.tramites||0}</div>
+          <div class="kpi-label">Trámites Totales</div>
+        </div>
+        <div class="kpi-card cyan">
+          <div class="kpi-icon">🎫</div>
+          <div class="kpi-val" style="color:#06b6d4">${d.turnos_hoy||0}</div>
+          <div class="kpi-label">Turnos Hoy</div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-icon">📁</div>
+          <div class="kpi-val" style="color:#7c3aed">${d.documentos||0}</div>
+          <div class="kpi-label">Documentos</div>
+        </div>`;
     }
 
-    if (turnosRes?.ok)
-      document.getElementById('reporte-turnos').innerHTML =
-        renderBar(turnosRes.data, 'tipo', 'total', '#3b82f6');
+    // Barras
+    if (turnosApiRes?.ok) {
+      document.getElementById('turnos-bar').innerHTML = renderBar(turnosApiRes.data, 'tipo', 'total', '#3b82f6');
+      document.getElementById('turnos-bar-count').textContent = turnosApiRes.data.length + ' tipos';
+    }
+    if (tramitesApiRes?.ok) {
+      document.getElementById('tramites-bar').innerHTML = renderBar(tramitesApiRes.data, 'estado', 'total', '#22c55e');
+      document.getElementById('tramites-bar-count').textContent = tramitesApiRes.data.length + ' estados';
+    }
 
-    if (tramitesRes?.ok)
-      document.getElementById('reporte-tramites').innerHTML =
-        renderBar(tramitesRes.data, 'estado', 'total', '#22c55e');
+    // Tabla usuarios
+    if (usuariosRes?.ok) {
+      const us = usuariosRes.data;
+      document.getElementById('usuarios-count').textContent = us.length + ' usuarios';
+      document.getElementById('usuarios-tabla').innerHTML = us.length ? `
+        <table class="rpt-table">
+          <thead><tr><th>#</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Registro</th></tr></thead>
+          <tbody>${us.map((u,i) => `
+            <tr>
+              <td style="color:var(--text-muted)">${i+1}</td>
+              <td><strong>${u.nombre} ${u.apellido||''}</strong></td>
+              <td style="color:var(--text-muted)">${u.email}</td>
+              <td><span class="role-chip role-${u.rol}">${u.rol}</span></td>
+              <td>${fmtDate(u.created_at)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>` : '<div class="empty-state"><p>Sin usuarios</p></div>';
+    }
+
+    // Tabla todos los trámites
+    if (todosT?.ok) {
+      const ts = todosT.data;
+      document.getElementById('tramites-total-count').textContent = ts.length + ' registros';
+      document.getElementById('tramites-tabla').innerHTML = ts.length ? `
+        <table class="rpt-table">
+          <thead><tr><th>#</th><th>Tipo</th><th>Descripción</th><th>Fecha</th><th>Estado</th></tr></thead>
+          <tbody>${ts.map((t,i) => `
+            <tr>
+              <td style="color:var(--text-muted)">${i+1}</td>
+              <td><strong>${t.tipo_tramite||'General'}</strong></td>
+              <td style="color:var(--text-muted);font-size:.8rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.descripcion||'—'}</td>
+              <td>${fmtDate(t.created_at)}</td>
+              <td><span style="color:${estadoColor(t.estado)};font-weight:600">${estadoEmoji(t.estado)} ${t.estado}</span></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>` : '<div class="empty-state"><p>Sin trámites</p></div>';
+    }
+
+    // Tabla todos los turnos
+    if (todosR?.ok) {
+      const rs = todosR.data;
+      document.getElementById('turnos-count').textContent = rs.length + ' registros';
+      document.getElementById('turnos-tabla').innerHTML = rs.length ? `
+        <table class="rpt-table">
+          <thead><tr><th>#</th><th>Turno</th><th>Tipo</th><th>Fecha</th><th>Estado</th></tr></thead>
+          <tbody>${rs.map((t,i) => `
+            <tr>
+              <td style="color:var(--text-muted)">${i+1}</td>
+              <td><strong>#${t.numero_turno}</strong></td>
+              <td>${t.tipo_tramite||'General'}</td>
+              <td>${fmtDate(t.created_at)}</td>
+              <td><span style="color:${estadoColor(t.estado)};font-weight:600">${estadoEmoji(t.estado)} ${t.estado}</span></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>` : '<div class="empty-state"><p>Sin turnos</p></div>';
+    }
+  }
+
+  function exportarPDF() {
+    const ahora = new Date();
+    document.getElementById('rpt-admin-fecha').textContent =
+      '📅 ' + ahora.toLocaleDateString('es-EC',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) +
+      ' · ' + ahora.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});
+    window.print();
   }
 
   loadAll();

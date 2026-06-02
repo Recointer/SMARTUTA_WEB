@@ -80,13 +80,15 @@ function renderSidebar(activePage = '') {
         { href: 'portal-estudiante.html', icon: '🎓', label: 'Mi Portal',       roles: ['estudiante'] },
         { href: 'turnos.html',            icon: '🎫', label: 'Turnos',          roles: ['admin','secretaria','estudiante'] },
         { href: 'tramites.html',          icon: '📋', label: 'Mis Trámites',    roles: ['estudiante'] },
+        { href: 'mi-reporte.html',        icon: '📄', label: 'Mi Reporte PDF',  roles: ['estudiante'] },
         { href: 'tramites.html',          icon: '📋', label: 'Trámites',        roles: ['admin','secretaria'] },
         { href: 'historial.html',         icon: '📜', label: 'Historial',       roles: ['admin','secretaria'] },
         { href: 'documentos.html',        icon: '📁', label: 'Documentos',      roles: ['admin','secretaria','estudiante'] },
         { href: 'dependencias.html',      icon: '🏛️', label: 'Dependencias',    roles: ['admin','secretaria','estudiante'] },
         { href: 'campus.html',            icon: '🗺️', label: 'Mapa Campus',     roles: ['admin','secretaria','estudiante'] },
-        { href: 'reportes.html',          icon: '📊', label: 'Reportes',        roles: ['admin'] },
-        { href: 'admin.html',             icon: '⚙️', label: 'Administración',  roles: ['admin'] },
+        { href: 'reportes.html',              icon: '📊', label: 'Reportes',         roles: ['admin'] },
+        { href: 'reporte-secretaria.html',    icon: '📄', label: 'Reporte del Día',  roles: ['secretaria','admin'] },
+        { href: 'admin.html',                 icon: '⚙️', label: 'Administración',   roles: ['admin'] },
 
     ];
 
@@ -124,7 +126,55 @@ function renderSidebar(activePage = '') {
                 <button onclick="logout()" class="btn btn-ghost btn-sm btn-icon" title="Salir" style="margin-left:auto">🚪</button>
             </div>
         </div>`;
+
+    // ── Mobile hamburger & overlay ───────────────────────────
+    // Inject overlay into body if not present
+    if (!document.getElementById('sidebar-overlay')) {
+        const overlay = document.createElement('div');
+        overlay.id = 'sidebar-overlay';
+        overlay.className = 'sidebar-overlay';
+        overlay.onclick = closeSidebar;
+        document.body.appendChild(overlay);
+    }
+
+    // Inject hamburger into topbar if not present
+    const topbar = document.querySelector('.topbar');
+    if (topbar && !document.getElementById('hamburger-btn')) {
+        const ham = document.createElement('button');
+        ham.id = 'hamburger-btn';
+        ham.className = 'hamburger';
+        ham.innerHTML = '☰';
+        ham.setAttribute('aria-label', 'Abrir menú');
+        ham.onclick = toggleSidebar;
+        topbar.insertBefore(ham, topbar.firstChild);
+    }
+
+    // Close sidebar when a nav link is clicked on mobile
+    sidebarEl.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth <= 768) closeSidebar();
+        });
+    });
 }
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const isOpen  = sidebar && sidebar.classList.contains('open');
+    if (isOpen) { closeSidebar(); } else { openSidebar(); }
+}
+function openSidebar() {
+    document.getElementById('sidebar')?.classList.add('open');
+    document.getElementById('sidebar-overlay')?.classList.add('show');
+    document.getElementById('hamburger-btn').innerHTML = '✕';
+}
+function closeSidebar() {
+    document.getElementById('sidebar')?.classList.remove('open');
+    document.getElementById('sidebar-overlay')?.classList.remove('show');
+    const ham = document.getElementById('hamburger-btn');
+    if (ham) ham.innerHTML = '☰';
+}
+
 
 function logout() {
     api.clearAuth();

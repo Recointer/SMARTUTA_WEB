@@ -39,6 +39,26 @@ img { max-width: 100%; }
 /* ── Layout ────────────────────────────────────────────────── */
 .app-layout { display: flex; min-height: 100vh; }
 
+/* ── Hamburger button (hidden on desktop) ─────────────────── */
+.hamburger {
+  display: none;
+  background: none; border: none;
+  color: var(--text); font-size: 1.5rem;
+  cursor: pointer; padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition);
+}
+.hamburger:hover { background: var(--bg-input); }
+
+/* ── Sidebar overlay (used on mobile) ─────────────────────── */
+.sidebar-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 99;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(2px);
+}
+.sidebar-overlay.show { display: block; }
+
 /* Sidebar */
 .sidebar {
   width: var(--sidebar-w);
@@ -48,7 +68,8 @@ img { max-width: 100%; }
   flex-direction: column;
   position: fixed; top: 0; left: 0; height: 100vh;
   z-index: 100;
-  transition: transform var(--transition);
+  transition: transform .3s ease;
+  overflow-y: auto;
 }
 .sidebar-logo {
   padding: 28px 24px 20px;
@@ -129,9 +150,10 @@ img { max-width: 100%; }
   border-bottom: 1px solid var(--border);
   padding: 16px 32px;
   display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
 }
 .topbar-title { font-size: 1.125rem; font-weight: 600; }
-.topbar-actions { display: flex; gap: 8px; align-items: center; }
+.topbar-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
 
 .page { padding: 32px; flex: 1; }
 
@@ -332,6 +354,7 @@ tr:last-child td { border-bottom: none; }
   padding: 48px;
   width: 100%; max-width: 420px;
   box-shadow: 0 32px 80px rgba(0,0,0,.6);
+  margin: 16px;
 }
 .login-logo { text-align: center; margin-bottom: 32px; }
 .login-logo h1 {
@@ -377,7 +400,102 @@ tr:last-child td { border-bottom: none; }
 /* ── Grid layouts ─────────────────────────────────────────── */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
-@media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+/* ════════════════════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Tablet (≤ 1024px) ──────────────────────────────────── */
+@media (max-width: 1024px) {
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+  .topbar { padding: 14px 20px; }
+  .page   { padding: 20px; }
+}
+
+/* ── Mobile (≤ 768px) ───────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Sidebar becomes a drawer */
+  .sidebar {
+    transform: translateX(-100%);
+    z-index: 200;
+    box-shadow: 4px 0 24px rgba(0,0,0,.6);
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  /* Main content fills full width */
+  .main-content { margin-left: 0; }
+
+  /* Show hamburger button */
+  .hamburger { display: block; }
+
+  /* Topbar adjustments */
+  .topbar {
+    padding: 12px 16px;
+    gap: 10px;
+  }
+  .topbar-title { font-size: 1rem; }
+  .topbar-actions .btn-ghost { display: none; } /* Hide less-important actions on mobile */
+
+  /* Page padding */
+  .page { padding: 16px; }
+
+  /* Grids collapse */
+  .grid-2, .grid-3 { grid-template-columns: 1fr; gap: 14px; }
+  .stats-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+
+  /* Cards */
+  .card { padding: 16px; }
+  .card-header { flex-wrap: wrap; gap: 8px; }
+
+  /* Tables — horizontal scroll */
+  .table-wrapper, .rpt-table, table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Modals — full width on mobile */
+  .modal {
+    max-width: 100%;
+    margin: 0 12px;
+    padding: 20px;
+    border-radius: 16px;
+  }
+
+  /* Login card */
+  .login-card {
+    padding: 28px 20px;
+    border-radius: 16px;
+    margin: 12px;
+  }
+  .login-logo h1 { font-size: 1.4rem; }
+
+  /* Stat cards */
+  .stat-value { font-size: 1.6rem; }
+
+  /* Buttons — allow wrapping */
+  .topbar-actions { flex-wrap: wrap; }
+  .btn { font-size: .8rem; padding: 7px 12px; }
+
+  /* Toast — full width bottom */
+  #toast-container {
+    left: 12px; right: 12px; bottom: 16px;
+    align-items: stretch;
+  }
+  .toast { max-width: 100%; }
+}
+
+/* ── Small Mobile (≤ 480px) ─────────────────────────────── */
+@media (max-width: 480px) {
+  .page { padding: 10px; }
+  .card { padding: 12px; }
+  .topbar { padding: 10px 12px; }
+  .topbar-title { font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+  .stat-value { font-size: 1.4rem; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .btn-sm { font-size: .75rem; padding: 5px 8px; }
+  .login-card { padding: 24px 16px; }
+}
 
 /* ── Queue visual ─────────────────────────────────────────── */
 .queue-container {
