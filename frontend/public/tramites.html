@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Trámites — SmartCampus UTA</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">📋 Gestión de Trámites</div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary" onclick="openModal()">+ Nuevo Trámite</button>
+      </div>
+    </div>
+    <div class="page">
+      <div class="card mb-16" style="border-left:4px solid var(--success)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:1.5rem">📐</span>
+          <div>
+            <div style="font-weight:600;font-size:.9rem">Estructuras: <span style="color:#86efac">Lista Simple</span> + <span style="color:#93c5fd">Lista Doble</span></div>
+            <div class="text-muted" style="font-size:.8rem">Historial dinámico (Lista Simple) · Navegación bidireccional de expedientes (Lista Doble)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="card mb-16" style="padding:16px">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+          <select id="filtro-estado" class="form-control" style="width:auto" onchange="loadTramites()">
+            <option value="">Todos los estados</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="en_proceso">En proceso</option>
+            <option value="completado">Completado</option>
+            <option value="rechazado">Rechazado</option>
+          </select>
+          <button onclick="loadTramites()" class="btn btn-ghost btn-sm">🔄 Actualizar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Lista de Trámites</span></div>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>ID</th><th>Tipo</th><th>Estudiante</th><th>Descripción</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
+            <tbody id="tbody-tramites"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Expediente / Navegación ListaDoble -->
+      <div class="card mt-24" id="expediente-card" style="display:none">
+        <div class="card-header">
+          <span class="card-title">📂 Expediente — Navegación Bidireccional (Lista Doble)</span>
+          <button onclick="document.getElementById('expediente-card').style.display='none'" class="btn btn-ghost btn-sm">✕ Cerrar</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <button id="btn-anterior" class="btn btn-ghost" onclick="navExpediente('anterior')">⬅️ Anterior</button>
+          <button id="btn-siguiente" class="btn btn-ghost" onclick="navExpediente('siguiente')">Siguiente ➡️</button>
+          <span id="expediente-pos" class="text-muted" style="align-self:center;font-size:.8rem"></span>
+        </div>
+        <div id="expediente-contenido"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nuevo Trámite -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">📋 Nuevo Trámite</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Estudiante</label>
+      <select id="estudiante-sel" class="form-control"><option value="">Cargando...</option></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tipo de Trámite</label>
+      <select id="tipo-sel" class="form-control"><option value="">Cargando...</option></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descripción</label>
+      <textarea id="desc-input" class="form-control" rows="3" placeholder="Descripción del trámite..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="crearTramite()">Crear Trámite</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal cambiar estado -->
+<div class="modal-overlay" id="modal-estado" onclick="if(event.target===this)closeModalEstado()">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-header">
+      <span class="modal-title">Cambiar Estado</span>
+      <button class="modal-close" onclick="closeModalEstado()">✕</button>
+    </div>
+    <div class="form-group">
+      <select id="nuevo-estado" class="form-control">
+        <option value="pendiente">Pendiente</option>
+        <option value="en_proceso">En proceso</option>
+        <option value="completado">Completado</option>
+        <option value="rechazado">Rechazado</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModalEstado()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarEstado()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/api.js"></script>
+<script>
+  requireAuth();
+  renderSidebar('tramites.html');
+
+  let expedienteData = [];
+  let expedienteIdx = 0;
+  let currentTramiteId = null;
+
+  async function loadTramites() {
+    const filtro = document.getElementById('filtro-estado').value;
+    const res = await api.get('/tramites');
+    if (!res?.ok) return;
+    let data = res.data;
+    if (filtro) data = data.filter(t => t.estado === filtro);
+    const tbody = document.getElementById('tbody-tramites');
+    tbody.innerHTML = data.length
+      ? data.map(t => `
+          <tr>
+            <td>#${t.id}</td>
+            <td>${t.tipo_tramite || '—'}</td>
+            <td>${t.estudiante || '—'}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.descripcion || '—'}</td>
+            <td>${estadoBadge(t.estado)}</td>
+            <td>${formatDate(t.created_at)}</td>
+            <td>
+              <div style="display:flex;gap:4px">
+                <button class="btn btn-ghost btn-sm" onclick="cambiarEstado(${t.id})" title="Cambiar estado">✏️</button>
+                <button class="btn btn-ghost btn-sm" onclick="verExpediente(${t.id})" title="Ver expediente">📂</button>
+              </div>
+            </td>
+          </tr>`).join('')
+      : '<tr><td colspan="7" class="text-center text-muted" style="padding:32px">Sin trámites</td></tr>';
+  }
+
+  async function loadSelects() {
+    const [estRes, tiposRes] = await Promise.all([api.get('/tramites/estudiantes'), api.get('/tramites/tipos')]);
+    if (estRes?.ok)
+      document.getElementById('estudiante-sel').innerHTML =
+        estRes.data.map(e => `<option value="${e.id}">${e.nombre_completo} — ${e.carrera}</option>`).join('');
+    if (tiposRes?.ok)
+      document.getElementById('tipo-sel').innerHTML =
+        tiposRes.data.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('');
+  }
+
+  async function crearTramite() {
+    const est   = document.getElementById('estudiante-sel').value;
+    const tipo  = document.getElementById('tipo-sel').value;
+    const desc  = document.getElementById('desc-input').value;
+    const res   = await api.post('/tramites', { estudiante_id: +est, tipo_tramite_id: +tipo, descripcion: desc });
+    if (res?.ok) { toast('Trámite creado', 'success'); closeModal(); loadTramites(); }
+    else toast(res?.data?.error || 'Error', 'error');
+  }
+
+  function cambiarEstado(id) {
+    currentTramiteId = id;
+    document.getElementById('modal-estado').classList.add('show');
+  }
+
+  async function guardarEstado() {
+    const estado = document.getElementById('nuevo-estado').value;
+    const res    = await api.put(`/tramites/${currentTramiteId}/estado`, { estado });
+    if (res?.ok) { toast('Estado actualizado', 'success'); closeModalEstado(); loadTramites(); }
+    else toast('Error', 'error');
+  }
+
+  async function verExpediente(id) {
+    const res = await api.get(`/tramites`);
+    if (!res?.ok) return;
+    // Simular lista doble: mostrar el trámite seleccionado y sus vecinos
+    expedienteData = res.data;
+    expedienteIdx = expedienteData.findIndex(t => t.id === id);
+    if (expedienteIdx < 0) expedienteIdx = 0;
+    renderExpediente();
+    document.getElementById('expediente-card').style.display = 'block';
+    document.getElementById('expediente-card').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function renderExpediente() {
+    const t = expedienteData[expedienteIdx];
+    if (!t) return;
+    document.getElementById('expediente-pos').textContent =
+      `${expedienteIdx + 1} / ${expedienteData.length}`;
+    document.getElementById('btn-anterior').disabled = expedienteIdx === 0;
+    document.getElementById('btn-siguiente').disabled = expedienteIdx === expedienteData.length - 1;
+    document.getElementById('expediente-contenido').innerHTML = `
+      <div style="background:var(--bg-input);border-radius:8px;padding:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><span class="text-muted">ID:</span> <strong>#${t.id}</strong></div>
+          <div><span class="text-muted">Estado:</span> ${estadoBadge(t.estado)}</div>
+          <div><span class="text-muted">Tipo:</span> ${t.tipo_tramite || '—'}</div>
+          <div><span class="text-muted">Estudiante:</span> ${t.estudiante || '—'}</div>
+          <div style="grid-column:span 2"><span class="text-muted">Descripción:</span> ${t.descripcion || '—'}</div>
+          <div><span class="text-muted">Creado:</span> ${formatDate(t.created_at)}</div>
+          <div><span class="text-muted">Actualizado:</span> ${formatDate(t.updated_at)}</div>
+        </div>
+      </div>`;
+  }
+
+  function navExpediente(dir) {
+    if (dir === 'anterior' && expedienteIdx > 0) expedienteIdx--;
+    if (dir === 'siguiente' && expedienteIdx < expedienteData.length - 1) expedienteIdx++;
+    renderExpediente();
+  }
+
+  function openModal()       { loadSelects(); document.getElementById('modal').classList.add('show'); }
+  function closeModal()      { document.getElementById('modal').classList.remove('show'); }
+  function closeModalEstado(){ document.getElementById('modal-estado').classList.remove('show'); }
+
+  loadTramites();
+</script>
+</body>
+</html>

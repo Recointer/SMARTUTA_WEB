@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Dependencias — SmartCampus UTA</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .org-tree { display:flex; flex-direction:column; align-items:center; }
+    .org-node {
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 18px; font-size: .825rem;
+      font-weight: 500; text-align:center; min-width:140px; max-width:200px;
+      cursor:pointer; transition: all .15s; position: relative;
+    }
+    .org-node:hover { border-color: var(--accent); background: rgba(37,99,235,.1); }
+    .org-node.root { background: linear-gradient(135deg, rgba(37,99,235,.2), rgba(124,58,237,.2)); border-color: var(--accent); font-size:.9rem; font-weight:700; }
+    .org-children { display:flex; gap:24px; justify-content:center; position:relative; }
+    .org-children::before {
+      content:''; position:absolute; top:0; left:50%; right:50%;
+      border-top: 2px solid var(--border);
+    }
+    .org-branch { display:flex; flex-direction:column; align-items:center; }
+    .org-line { width:2px; height:20px; background: var(--border); }
+    .org-h-line { height:2px; background:var(--border); position:absolute; top:0; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">🏛️ Estructura de Dependencias</div>
+      <div id="admin-actions" style="display:none">
+        <button class="btn btn-primary" onclick="openModal()">+ Dependencia</button>
+      </div>
+    </div>
+    <div class="page">
+      <div class="card mb-16" style="border-left:4px solid var(--info)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:1.5rem">📐</span>
+          <div>
+            <div style="font-weight:600;font-size:.9rem">Estructura: <span style="color:#67e8f9">Árbol N-ario</span></div>
+            <div class="text-muted" style="font-size:.8rem">La jerarquía universitaria modelada como árbol. UTA → Facultades → Departamentos → Carreras</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vista árbol lista -->
+      <div class="grid-2" style="align-items:start">
+        <div class="card">
+          <div class="card-header"><span class="card-title">📋 Vista Lista</span></div>
+          <div class="tree" id="lista-deps">
+            <div class="loading-center"><span class="spinner"></span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">🏛️ Organigrama</span></div>
+          <div id="organigrama" style="overflow-x:auto;padding:16px 8px">
+            <div class="loading-center"><span class="spinner"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nueva dependencia -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Nueva Dependencia</span><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="form-group">
+      <label class="form-label">Nombre</label>
+      <input id="dep-nombre" class="form-control" placeholder="Ej: Depto. Informática">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descripción</label>
+      <input id="dep-desc" class="form-control" placeholder="Descripción breve">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Dependencia padre</label>
+      <select id="dep-padre" class="form-control"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nivel jerárquico</label>
+      <input id="dep-nivel" class="form-control" type="number" min="0" value="1">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="crearDependencia()">Crear</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/api.js"></script>
+<script>
+  requireAuth();
+  renderSidebar('dependencias.html');
+  if (api.getUser().rol === 'admin') document.getElementById('admin-actions').style.display = 'block';
+
+  function renderListaNode(nodo, depth = 0) {
+    const pad = depth * 20;
+    const hasChildren = nodo.hijos && nodo.hijos.length > 0;
+    return `
+      <div style="padding:8px 12px 8px ${pad + 12}px;border-radius:6px;margin:2px 0;display:flex;align-items:center;gap:8px;
+                  ${depth===0?'background:rgba(37,99,235,.1);font-weight:700':''}">
+        <span>${depth===0?'🏛️':depth===1?'🏢':depth===2?'📚':'📌'}</span>
+        <div>
+          <div style="font-size:.875rem">${nodo.nombre}</div>
+          ${nodo.descripcion ? `<div style="font-size:.7rem;color:var(--text-muted)">${nodo.descripcion}</div>` : ''}
+        </div>
+      </div>
+      ${hasChildren ? nodo.hijos.map(h => renderListaNode(h, depth+1)).join('') : ''}`;
+  }
+
+  function renderOrgNode(nodo) {
+    const hasChildren = nodo.hijos && nodo.hijos.length > 0;
+    return `
+      <div class="org-branch">
+        <div class="org-line"></div>
+        <div class="org-node${nodo.padre_id===-1?' root':''}" title="${nodo.descripcion||''}">
+          ${nodo.nombre}
+        </div>
+        ${hasChildren ? `
+          <div class="org-line"></div>
+          <div class="org-children">
+            ${nodo.hijos.map(h => renderOrgNode(h)).join('')}
+          </div>` : ''}
+      </div>`;
+  }
+
+  async function loadData() {
+    const res = await api.get('/dependencias/arbol');
+    if (!res?.ok || !res.data) {
+      document.getElementById('lista-deps').innerHTML = '<div class="empty-state"><p>Sin datos</p></div>';
+      return;
+    }
+    const root = res.data;
+    document.getElementById('lista-deps').innerHTML = renderListaNode(root);
+    document.getElementById('organigrama').innerHTML = `
+      <div style="display:flex;justify-content:center">
+        <div class="org-branch" style="padding-top:0">
+          <div class="org-node root">${root.nombre}</div>
+          ${root.hijos?.length ? `
+            <div class="org-line"></div>
+            <div class="org-children">
+              ${root.hijos.map(h => renderOrgNode(h)).join('')}
+            </div>` : ''}
+        </div>
+      </div>`;
+
+    // Load flat list for select
+    const flatRes = await api.get('/dependencias');
+    if (flatRes?.ok) {
+      document.getElementById('dep-padre').innerHTML =
+        `<option value="-1">Sin padre (raíz)</option>` +
+        flatRes.data.map(d => `<option value="${d.id}">${'&nbsp;'.repeat(d.nivel*4)}${d.nombre}</option>`).join('');
+    }
+  }
+
+  async function crearDependencia() {
+    const res = await api.post('/dependencias', {
+      nombre:      document.getElementById('dep-nombre').value,
+      descripcion: document.getElementById('dep-desc').value,
+      padre_id:   +document.getElementById('dep-padre').value,
+      nivel:      +document.getElementById('dep-nivel').value,
+    });
+    if (res?.ok) { toast('Dependencia creada', 'success'); closeModal(); loadData(); }
+    else toast('Error', 'error');
+  }
+
+  function openModal()  { document.getElementById('modal').classList.add('show'); }
+  function closeModal() { document.getElementById('modal').classList.remove('show'); }
+
+  loadData();
+</script>
+</body>
+</html>

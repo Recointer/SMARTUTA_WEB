@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Administración — SmartCampus UTA</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">⚙️ Administración</div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary" onclick="openModal()">+ Nuevo Usuario</button>
+      </div>
+    </div>
+    <div class="page">
+      <!-- Tabs -->
+      <div style="display:flex;gap:4px;margin-bottom:20px;background:var(--bg-card);padding:4px;border-radius:10px;border:1px solid var(--border);width:fit-content">
+        <button class="btn tab-btn active" id="tab-usuarios" onclick="switchTab('usuarios')">👥 Usuarios</button>
+        <button class="btn tab-btn" id="tab-bitacora" onclick="switchTab('bitacora')">📜 Bitácora Global</button>
+      </div>
+
+      <!-- Tab Usuarios -->
+      <div id="panel-usuarios">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Usuarios del Sistema</span></div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>ID</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th>Registrado</th><th>Acciones</th></tr></thead>
+              <tbody id="tbody-usuarios"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Bitácora -->
+      <div id="panel-bitacora" style="display:none">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Bitácora Global de Acciones</span></div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>ID</th><th>Usuario</th><th>Acción</th><th>Descripción</th><th>Fecha</th></tr></thead>
+              <tbody id="tbody-bitacora"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nuevo Usuario -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Nuevo Usuario</span><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="form-group">
+      <label class="form-label">Nombre completo</label>
+      <input id="u-nombre" class="form-control" placeholder="Ej: Ana García">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input id="u-email" class="form-control" type="email" placeholder="usuario@uta.edu.ec">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Contraseña</label>
+      <input id="u-pass" class="form-control" type="password" placeholder="Mínimo 6 caracteres">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Rol</label>
+      <select id="u-rol" class="form-control">
+        <option value="3">Estudiante</option>
+        <option value="2">Secretaria</option>
+        <option value="1">Administrador</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="crearUsuario()">Crear Usuario</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/api.js"></script>
+<script>
+  requireAuth();
+  requireRole('admin');
+  renderSidebar('admin.html');
+
+  function switchTab(tab) {
+    document.getElementById('panel-usuarios').style.display = tab==='usuarios' ? 'block' : 'none';
+    document.getElementById('panel-bitacora').style.display = tab==='bitacora' ? 'block' : 'none';
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-'+tab).classList.add('active');
+    if (tab === 'bitacora') loadBitacora();
+  }
+
+  async function loadUsuarios() {
+    const res = await api.get('/usuarios');
+    if (!res?.ok) return;
+    document.getElementById('tbody-usuarios').innerHTML = res.data.map(u => `
+      <tr>
+        <td>#${u.id}</td>
+        <td>${u.nombre}</td>
+        <td>${u.email}</td>
+        <td><span class="badge ${u.rol==='admin'?'badge-red':u.rol==='secretaria'?'badge-yellow':'badge-blue'}">${u.rol}</span></td>
+        <td>${u.activo ? '<span class="badge badge-green">Activo</span>' : '<span class="badge badge-gray">Inactivo</span>'}</td>
+        <td>${formatDate(u.created_at)}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="toggleActivo(${u.id},${!u.activo})">
+            ${u.activo ? '🚫 Desactivar' : '✅ Activar'}
+          </button>
+        </td>
+      </tr>`).join('');
+  }
+
+  async function loadBitacora() {
+    const res = await api.get('/historial/todos');
+    if (!res?.ok) return;
+    document.getElementById('tbody-bitacora').innerHTML = res.data.length
+      ? res.data.map(a => `
+          <tr>
+            <td>#${a.id}</td>
+            <td>${a.usuario || '—'}</td>
+            <td><span class="badge badge-blue">${a.accion}</span></td>
+            <td>${a.descripcion}</td>
+            <td>${formatDate(a.timestamp)}</td>
+          </tr>`).join('')
+      : '<tr><td colspan="5" class="text-center text-muted" style="padding:32px">Sin registros</td></tr>';
+  }
+
+  async function crearUsuario() {
+    const res = await api.post('/auth/register', {
+      nombre:   document.getElementById('u-nombre').value,
+      email:    document.getElementById('u-email').value,
+      password: document.getElementById('u-pass').value,
+      rol_id:  +document.getElementById('u-rol').value,
+    });
+    if (res?.ok) { toast('Usuario creado', 'success'); closeModal(); loadUsuarios(); }
+    else toast(res?.data?.error || 'Error', 'error');
+  }
+
+  async function toggleActivo(id, activo) {
+    const res = await api.put(`/usuarios/${id}/activo`, { activo });
+    if (res?.ok) { toast('Estado actualizado', 'success'); loadUsuarios(); }
+  }
+
+  function openModal()  { document.getElementById('modal').classList.add('show'); }
+  function closeModal() { document.getElementById('modal').classList.remove('show'); }
+
+  // Tab btn styles inline
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.style.background = 'transparent';
+    b.style.color = 'var(--text-muted)';
+  });
+  document.getElementById('tab-usuarios').style.cssText += ';background:var(--accent);color:#fff';
+
+  loadUsuarios();
+</script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartCampus UTA — Iniciar Sesión</title>
+  <meta name="description" content="Sistema de gestión universitaria SmartCampus UTA. Inicia sesión para acceder a turnos, trámites, documentos y mapa del campus.">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div style="font-size:3rem;margin-bottom:12px">🎓</div>
+      <h1>SmartCampus UTA</h1>
+      <p>Sistema de Gestión Universitaria</p>
+    </div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label class="form-label" for="email">Correo institucional</label>
+        <input id="email" type="email" class="form-control"
+               placeholder="usuario@uta.edu.ec" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">Contraseña</label>
+        <input id="password" type="password" class="form-control"
+               placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <div id="login-error" style="display:none;color:#ef4444;font-size:.825rem;margin-bottom:12px;padding:10px;background:rgba(239,68,68,.1);border-radius:8px;border:1px solid rgba(239,68,68,.3)"></div>
+      <button id="login-btn" type="submit" class="btn btn-primary w-full"
+              style="justify-content:center;padding:12px;font-size:.95rem;margin-top:4px">
+        Iniciar Sesión
+      </button>
+    </form>
+
+    <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border)">
+      <p style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-bottom:12px">Cuentas de demostración</p>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="quickLogin('admin@uta.edu.ec','admin123')" style="justify-content:flex-start;gap:8px">
+          <span>🔴</span> admin@uta.edu.ec <span style="margin-left:auto;opacity:.5">Admin</span>
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="quickLogin('secretaria@uta.edu.ec','admin123')" style="justify-content:flex-start;gap:8px">
+          <span>🟡</span> secretaria@uta.edu.ec <span style="margin-left:auto;opacity:.5">Secretaria</span>
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="quickLogin('juan@uta.edu.ec','admin123')" style="justify-content:flex-start;gap:8px">
+          <span>🟢</span> juan@uta.edu.ec <span style="margin-left:auto;opacity:.5">Estudiante</span>
+        </button>
+      </div>
+    </div>
+
+    <p style="font-size:.7rem;color:var(--text-muted);text-align:center;margin-top:20px">
+      Estructura de Datos — Ingeniería de Software — UTA
+    </p>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/api.js"></script>
+<script>
+  // Redirect if already logged in
+  if (api.isLoggedIn()) window.location.href = '/dashboard.html';
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await doLogin(
+      document.getElementById('email').value,
+      document.getElementById('password').value
+    );
+  });
+
+  async function quickLogin(email, password) {
+    document.getElementById('email').value    = email;
+    document.getElementById('password').value = password;
+    await doLogin(email, password);
+  }
+
+  async function doLogin(email, password) {
+    const btn = document.getElementById('login-btn');
+    const err = document.getElementById('login-error');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Ingresando...';
+    err.style.display = 'none';
+
+    const res = await api.post('/auth/login', { email, password });
+    btn.disabled = false;
+    btn.textContent = 'Iniciar Sesión';
+
+    if (!res || !res.ok) {
+      err.textContent = res?.data?.error || 'Error de conexión';
+      err.style.display = 'block';
+      return;
+    }
+    api.setAuth(res.data.token, {
+      id:     res.data.id,
+      nombre: res.data.nombre,
+      rol:    res.data.rol,
+    });
+    window.location.href = '/dashboard.html';
+  }
+</script>
+</body>
+</html>

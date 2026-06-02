@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Documentos — SmartCampus UTA</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .tree ul { list-style:none; padding-left:20px; border-left:1px dashed var(--border); margin-left:8px; }
+    .tree > ul { border-left:none; padding-left:0; margin-left:0; }
+    .tree-node { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; cursor:pointer; transition:background .15s; }
+    .tree-node:hover { background:var(--bg-input); }
+    .tree-node.selected { background:rgba(37,99,235,.2); color:#60a5fa; }
+    .children-hidden { display:none; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">📁 Gestión Documental</div>
+      <div class="topbar-actions" id="admin-actions" style="display:none">
+        <button class="btn btn-ghost" onclick="openCatModal()">+ Categoría</button>
+        <button class="btn btn-primary" onclick="openDocModal()">+ Documento</button>
+      </div>
+    </div>
+    <div class="page">
+      <div class="card mb-16" style="border-left:4px solid var(--warning)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:1.5rem">📐</span>
+          <div>
+            <div style="font-weight:600;font-size:.9rem">Estructura: <span style="color:#fde68a">Árbol N-ario</span></div>
+            <div class="text-muted" style="font-size:.8rem">Cada categoría puede tener N subcategorías. Recorrido preorden para renderizar el árbol</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="gap:20px;align-items:start">
+        <!-- Árbol de categorías -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">🌳 Árbol de Categorías</span></div>
+          <div class="tree" id="arbol-cats">
+            <div class="loading-center"><span class="spinner"></span></div>
+          </div>
+        </div>
+        <!-- Documentos de la categoría seleccionada -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📄 Documentos</span>
+            <span id="cat-seleccionada" class="badge badge-blue" style="display:none"></span>
+          </div>
+          <div id="docs-list">
+            <div class="empty-state"><div class="icon">👈</div><p>Selecciona una categoría</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nueva categoría -->
+<div class="modal-overlay" id="modal-cat" onclick="if(event.target===this)closeCatModal()">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header"><span class="modal-title">Nueva Categoría</span><button class="modal-close" onclick="closeCatModal()">✕</button></div>
+    <div class="form-group">
+      <label class="form-label">Nombre</label>
+      <input id="cat-nombre" class="form-control" placeholder="Ej: Formularios de beca">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Categoría padre</label>
+      <select id="cat-padre" class="form-control"></select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeCatModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="crearCategoria()">Crear</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nuevo documento -->
+<div class="modal-overlay" id="modal-doc" onclick="if(event.target===this)closeDocModal()">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Subir Documento</span><button class="modal-close" onclick="closeDocModal()">✕</button></div>
+    <div class="form-group">
+      <label class="form-label">Nombre del documento</label>
+      <input id="doc-nombre" class="form-control" placeholder="Ej: Reglamento 2024">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descripción</label>
+      <textarea id="doc-desc" class="form-control" rows="2"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Categoría</label>
+      <select id="doc-cat" class="form-control"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">URL del archivo</label>
+      <input id="doc-url" class="form-control" placeholder="https://...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeDocModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="crearDocumento()">Subir</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/api.js"></script>
+<script>
+  requireAuth();
+  renderSidebar('documentos.html');
+  const user = api.getUser();
+  if (user.rol === 'admin') document.getElementById('admin-actions').style.display = 'flex';
+
+  let categoriasFlat = [];
+  let selectedCatId = null;
+
+  function renderTreeNode(nodo, depth = 0) {
+    const hasChildren = nodo.hijos && nodo.hijos.length > 0;
+    const childId = `children-${nodo.id}`;
+    return `
+      <li>
+        <div class="tree-node" id="node-${nodo.id}" onclick="selectCategory(${nodo.id}, '${nodo.nombre}', event)">
+          <span onclick="${hasChildren ? `toggleChildren('${childId}', event)` : ''}">
+            ${hasChildren ? '📂' : '📄'}
+          </span>
+          <span style="flex:1">${nodo.nombre}</span>
+          ${hasChildren ? `<span style="font-size:.65rem;color:var(--text-muted)">${nodo.hijos.length}</span>` : ''}
+        </div>
+        ${hasChildren ? `<ul id="${childId}">${nodo.hijos.map(h => renderTreeNode(h, depth+1)).join('')}</ul>` : ''}
+      </li>`;
+  }
+
+  function toggleChildren(id, e) {
+    e.stopPropagation();
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('children-hidden');
+  }
+
+  async function loadArbol() {
+    const res = await api.get('/documentos/arbol');
+    if (!res?.ok) return;
+    const arbol = document.getElementById('arbol-cats');
+    if (!res.data) { arbol.innerHTML = '<div class="empty-state"><div class="icon">🌳</div><p>Sin categorías</p></div>'; return; }
+    arbol.innerHTML = `<ul>${renderTreeNode(res.data)}</ul>`;
+    // Cargar categorías planas para selects
+    const catRes = await api.get('/documentos/categorias');
+    if (catRes?.ok) {
+      categoriasFlat = catRes.data;
+      const opts = `<option value="-1">Sin padre (raíz)</option>` +
+        catRes.data.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+      document.getElementById('cat-padre').innerHTML = opts;
+      document.getElementById('doc-cat').innerHTML =
+        catRes.data.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    }
+  }
+
+  async function selectCategory(id, nombre, e) {
+    document.querySelectorAll('.tree-node').forEach(n => n.classList.remove('selected'));
+    document.getElementById(`node-${id}`).classList.add('selected');
+    selectedCatId = id;
+    const badge = document.getElementById('cat-seleccionada');
+    badge.textContent = nombre;
+    badge.style.display = 'inline-flex';
+
+    const res = await api.get(`/documentos`);
+    const docs = res?.data?.filter(d => d.categoria_id === id) || [];
+    const list = document.getElementById('docs-list');
+    list.innerHTML = docs.length
+      ? `<div style="display:flex;flex-direction:column;gap:8px">
+          ${docs.map(d => `
+            <div style="padding:12px;background:var(--bg-input);border-radius:8px;display:flex;align-items:center;gap:12px">
+              <span style="font-size:1.5rem">📄</span>
+              <div style="flex:1">
+                <div style="font-weight:500;font-size:.875rem">${d.nombre}</div>
+                <div style="font-size:.75rem;color:var(--text-muted)">${d.descripcion || '—'}</div>
+                ${d.archivo_url ? `<a href="${d.archivo_url}" target="_blank" style="font-size:.75rem;color:var(--accent)">🔗 Abrir</a>` : ''}
+              </div>
+              ${user.rol==='admin' ? `<button class="btn btn-danger btn-sm btn-icon" onclick="eliminarDoc(${d.id})">🗑️</button>` : ''}
+            </div>`).join('')}
+        </div>`
+      : '<div class="empty-state"><div class="icon">📭</div><p>Sin documentos en esta categoría</p></div>';
+  }
+
+  async function crearCategoria() {
+    const nombre   = document.getElementById('cat-nombre').value;
+    const padre_id = +document.getElementById('cat-padre').value;
+    if (!nombre) return toast('Nombre requerido', 'error');
+    const res = await api.post('/documentos/categorias', { nombre, padre_id });
+    if (res?.ok) { toast('Categoría creada', 'success'); closeCatModal(); loadArbol(); }
+    else toast('Error', 'error');
+  }
+
+  async function crearDocumento() {
+    const res = await api.post('/documentos', {
+      nombre:      document.getElementById('doc-nombre').value,
+      descripcion: document.getElementById('doc-desc').value,
+      categoria_id:+document.getElementById('doc-cat').value,
+      archivo_url: document.getElementById('doc-url').value,
+    });
+    if (res?.ok) { toast('Documento subido', 'success'); closeDocModal(); loadArbol(); }
+    else toast('Error', 'error');
+  }
+
+  async function eliminarDoc(id) {
+    if (!confirm('¿Eliminar documento?')) return;
+    const res = await api.delete(`/documentos/${id}`);
+    if (res?.ok) { toast('Eliminado', 'success'); if (selectedCatId) selectCategory(selectedCatId, ''); }
+  }
+
+  function openCatModal()  { document.getElementById('modal-cat').classList.add('show'); }
+  function closeCatModal() { document.getElementById('modal-cat').classList.remove('show'); }
+  function openDocModal()  { document.getElementById('modal-doc').classList.add('show'); }
+  function closeDocModal() { document.getElementById('modal-doc').classList.remove('show'); }
+
+  loadArbol();
+</script>
+</body>
+</html>

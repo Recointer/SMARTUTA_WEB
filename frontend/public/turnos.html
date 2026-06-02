@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Turnos — SmartCampus UTA</title>
+  <meta name="description" content="Gestión de cola de turnos FIFO para atención estudiantil">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">🎫 Gestión de Turnos</div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary" onclick="openModal()">+ Nuevo Turno</button>
+        <button id="btn-atender" class="btn btn-success" onclick="atenderSiguiente()" style="display:none">
+          ✅ Atender Siguiente
+        </button>
+      </div>
+    </div>
+    <div class="page">
+      <!-- Estructura de datos -->
+      <div class="card mb-16" style="border-left:4px solid var(--accent)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:1.5rem">📐</span>
+          <div>
+            <div style="font-weight:600;font-size:.9rem">Estructura en uso: <span style="color:#60a5fa">Cola FIFO (Queue)</span></div>
+            <div class="text-muted" style="font-size:.8rem">Los turnos se atienden en orden de llegada — Primero en entrar, primero en salir</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="stats-grid" id="stats-turnos"></div>
+
+      <!-- Cola visual -->
+      <div class="card mb-16">
+        <div class="card-header">
+          <span class="card-title">Cola actual <span id="cola-size" class="badge badge-blue">0</span></span>
+          <button onclick="loadData()" class="btn btn-ghost btn-sm">🔄 Actualizar</button>
+        </div>
+        <div class="queue-container" id="queue-visual">
+          <div class="text-muted" style="font-size:.875rem">Cola vacía</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:.75rem;color:var(--text-muted)">
+          <span>⬅️ Frente (próximo a atender)</span>
+          <div style="flex:1;border-top:1px dashed var(--border)"></div>
+          <span>Final (último en llegar) ➡️</span>
+        </div>
+      </div>
+
+      <!-- Tabla turnos -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Historial de Turnos</span></div>
+        <div class="table-wrapper">
+          <table id="tabla-turnos">
+            <thead><tr><th>#</th><th>Tipo de Trámite</th><th>Usuario</th><th>Estado</th><th>Hora</th><th>Ventanilla</th></tr></thead>
+            <tbody id="tbody-turnos"><tr><td colspan="6" class="text-center"><div class="loading-center"><span class="spinner"></span></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nuevo Turno -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🎫 Nuevo Turno</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tipo de Trámite</label>
+      <select id="tipo-tramite" class="form-control">
+        <option value="">Cargando...</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="crearTurno()">Registrar en Cola</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/api.js"></script>
+<script>
+  requireAuth();
+  renderSidebar('turnos.html');
+  const user = api.getUser();
+
+  // Mostrar botón atender solo a admin/secretaria
+  if (user.rol === 'admin' || user.rol === 'secretaria') {
+    document.getElementById('btn-atender').style.display = 'flex';
+  }
+
+  async function loadData() {
+    const [estadoRes, turnosRes, tiposRes] = await Promise.all([
+      api.get('/turnos/estado'),
+      api.get('/turnos'),
+      api.get('/tramites/tipos'),
+    ]);
+
+    // Stats
+    if (estadoRes?.ok) {
+      const d = estadoRes.data;
+      document.getElementById('stats-turnos').innerHTML = `
+        <div class="stat-card yellow">
+          <div class="stat-value">${d.pendientes||0}</div>
+          <div class="stat-label">En cola</div>
+          <div class="stat-icon">⏳</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-value">${d.atendidos||0}</div>
+          <div class="stat-label">Atendidos hoy</div>
+          <div class="stat-icon">✅</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${d.total||0}</div>
+          <div class="stat-label">Total hoy</div>
+          <div class="stat-icon">📊</div>
+        </div>`;
+    }
+
+    // Cola visual
+    if (turnosRes?.ok) {
+      const pendientes = turnosRes.data.filter(t => t.estado === 'pendiente');
+      const qv = document.getElementById('queue-visual');
+      document.getElementById('cola-size').textContent = pendientes.length;
+      if (!pendientes.length) {
+        qv.innerHTML = '<div class="text-muted" style="font-size:.875rem;padding:8px">Cola vacía ✅</div>';
+      } else {
+        qv.innerHTML = pendientes.slice(0, 10).map((t, i) =>
+          `<div class="queue-item" title="${t.tipo_tramite}">#${t.numero_turno}
+           ${i === 0 ? '<span style="font-size:.6rem;opacity:.8">← FRENTE</span>' : ''}
+          </div>`
+        ).join('<span class="queue-arrow">›</span>');
+      }
+
+      // Tabla
+      document.getElementById('tbody-turnos').innerHTML = turnosRes.data.length
+        ? turnosRes.data.map(t => `
+          <tr>
+            <td><strong>#${t.numero_turno}</strong></td>
+            <td>${t.tipo_tramite || '—'}</td>
+            <td>${t.usuario || '—'}</td>
+            <td>${estadoBadge(t.estado)}</td>
+            <td>${formatDate(t.created_at)}</td>
+            <td>${t.ventanilla_id ? 'V-' + t.ventanilla_id : '—'}</td>
+          </tr>`).join('')
+        : '<tr><td colspan="6" class="text-center text-muted">Sin turnos</td></tr>';
+    }
+
+    // Tipos trámite para el select
+    if (tiposRes?.ok) {
+      document.getElementById('tipo-tramite').innerHTML =
+        tiposRes.data.map(t => `<option value="${t.nombre}">${t.nombre}</option>`).join('');
+    }
+  }
+
+  async function crearTurno() {
+    const tipo = document.getElementById('tipo-tramite').value;
+    const res  = await api.post('/turnos', { tipo_tramite: tipo });
+    if (res?.ok) {
+      toast(`Turno #${res.data.numero_turno} registrado`, 'success');
+      closeModal();
+      loadData();
+    } else {
+      toast(res?.data?.error || 'Error', 'error');
+    }
+  }
+
+  async function atenderSiguiente() {
+    const res = await api.put('/turnos/siguiente');
+    if (res?.ok) {
+      toast(`Turno #${res.data.numero} atendido. Quedan: ${res.data.restantes}`, 'success');
+      loadData();
+    } else {
+      toast(res?.data?.error || 'Cola vacía', 'error');
+    }
+  }
+
+  function openModal()  { document.getElementById('modal').classList.add('show'); }
+  function closeModal() { document.getElementById('modal').classList.remove('show'); }
+
+  loadData();
+  setInterval(loadData, 10000); // auto-refresh cada 10s
+</script>
+</body>
+</html>

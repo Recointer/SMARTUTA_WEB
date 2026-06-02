@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Dashboard — SmartCampus UTA</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">🏠 Dashboard</div>
+      <div class="topbar-actions">
+        <span id="topbar-time" class="text-muted" style="font-size:.8rem"></span>
+      </div>
+    </div>
+    <div class="page">
+      <!-- Stats -->
+      <div class="stats-grid" id="stats-grid">
+        <div class="loading-center"><span class="spinner"></span></div>
+      </div>
+      <!-- Row 2 -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🎫 Cola de Turnos Hoy</span>
+            <a href="turnos.html" class="btn btn-ghost btn-sm">Ver todo →</a>
+          </div>
+          <div id="cola-estado">
+            <div class="loading-center"><span class="spinner"></span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📋 Últimos Trámites</span>
+            <a href="tramites.html" class="btn btn-ghost btn-sm">Ver todo →</a>
+          </div>
+          <div id="tramites-recientes">
+            <div class="loading-center"><span class="spinner"></span></div>
+          </div>
+        </div>
+      </div>
+      <!-- Accesos rápidos -->
+      <div class="card mt-24">
+        <div class="card-header"><span class="card-title">⚡ Accesos Rápidos</span></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <a href="turnos.html"       class="btn btn-primary">🎫 Nuevo Turno</a>
+          <a href="tramites.html"     class="btn btn-ghost">📋 Nuevo Trámite</a>
+          <a href="campus.html"       class="btn btn-ghost">🗺️ Buscar Ruta</a>
+          <a href="documentos.html"   class="btn btn-ghost">📁 Documentos</a>
+          <a href="dependencias.html" class="btn btn-ghost">🏛️ Dependencias</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast-container"></div>
+<script src="/js/api.js"></script>
+<script>
+  requireAuth();
+  renderSidebar('dashboard.html');
+
+  // Clock
+  const tick = () => {
+    document.getElementById('topbar-time').textContent =
+      new Date().toLocaleString('es-EC');
+  };
+  tick(); setInterval(tick, 1000);
+
+  async function loadStats() {
+    const res = await api.get('/reportes/generales');
+    if (!res?.ok) return;
+    const d = res.data;
+    document.getElementById('stats-grid').innerHTML = `
+      <div class="stat-card">
+        <div class="stat-value">${d.usuarios}</div>
+        <div class="stat-label">Usuarios activos</div>
+        <div class="stat-icon">👤</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-value">${d.estudiantes}</div>
+        <div class="stat-label">Estudiantes</div>
+        <div class="stat-icon">🎓</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-value">${d.tramites}</div>
+        <div class="stat-label">Trámites</div>
+        <div class="stat-icon">📋</div>
+      </div>
+      <div class="stat-card cyan">
+        <div class="stat-value">${d.turnos_hoy}</div>
+        <div class="stat-label">Turnos hoy</div>
+        <div class="stat-icon">🎫</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${d.documentos}</div>
+        <div class="stat-label">Documentos</div>
+        <div class="stat-icon">📁</div>
+      </div>`;
+  }
+
+  async function loadColaEstado() {
+    const res = await api.get('/turnos/estado');
+    if (!res?.ok) return;
+    const d = res.data;
+    document.getElementById('cola-estado').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center">
+        <div><div style="font-size:1.75rem;font-weight:800;color:var(--warning)">${d.pendientes||0}</div><div class="text-muted">Pendientes</div></div>
+        <div><div style="font-size:1.75rem;font-weight:800;color:var(--success)">${d.atendidos||0}</div><div class="text-muted">Atendidos</div></div>
+        <div><div style="font-size:1.75rem;font-weight:800">${d.total||0}</div><div class="text-muted">Total hoy</div></div>
+      </div>
+      ${d.siguiente_numero ? `<div style="margin-top:16px;padding:12px;background:rgba(37,99,235,.1);border-radius:8px;text-align:center">
+        <span style="font-size:.8rem;color:var(--text-muted)">Siguiente turno</span>
+        <div style="font-size:1.5rem;font-weight:700;color:#60a5fa">#${d.siguiente_numero}</div>
+      </div>` : '<div class="empty-state"><div class="icon">✅</div><p>Cola vacía</p></div>'}`;
+  }
+
+  async function loadTramitesRecientes() {
+    const res = await api.get('/tramites');
+    if (!res?.ok) return;
+    const items = res.data.slice(0, 5);
+    if (!items.length) {
+      document.getElementById('tramites-recientes').innerHTML =
+        '<div class="empty-state"><div class="icon">📋</div><p>Sin trámites</p></div>';
+      return;
+    }
+    document.getElementById('tramites-recientes').innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${items.map(t => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:var(--bg-input);border-radius:8px">
+            <div>
+              <div style="font-size:.825rem;font-weight:500">${t.tipo_tramite || 'General'}</div>
+              <div style="font-size:.75rem;color:var(--text-muted)">${t.estudiante || 'N/A'}</div>
+            </div>
+            ${estadoBadge(t.estado)}
+          </div>`).join('')}
+      </div>`;
+  }
+
+  loadStats();
+  loadColaEstado();
+  loadTramitesRecientes();
+</script>
+</body>
+</html>

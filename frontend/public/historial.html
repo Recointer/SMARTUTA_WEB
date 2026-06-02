@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Historial — SmartCampus UTA</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">📜 Historial de Acciones</div>
+      <div class="topbar-actions">
+        <button class="btn btn-warning" onclick="deshacer()">↩️ Deshacer</button>
+      </div>
+    </div>
+    <div class="page">
+      <div class="card mb-16" style="border-left:4px solid var(--warning)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:1.5rem">📐</span>
+          <div>
+            <div style="font-weight:600;font-size:.9rem">Estructura: <span style="color:#fde68a">Pila LIFO (Stack)</span></div>
+            <div class="text-muted" style="font-size:.8rem">Las acciones se acumulan en una pila. "Deshacer" retira la acción más reciente (cima)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pila visual -->
+      <div class="card mb-16">
+        <div class="card-header"><span class="card-title">🥞 Pila de acciones (cima arriba)</span></div>
+        <div id="pila-visual" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto">
+          <div class="loading-center"><span class="spinner"></span></div>
+        </div>
+      </div>
+
+      <!-- Tabla historial BD -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Registro en Base de Datos</span>
+          <button onclick="loadData()" class="btn btn-ghost btn-sm">🔄</button>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>ID</th><th>Acción</th><th>Descripción</th><th>Fecha/Hora</th></tr></thead>
+            <tbody id="tbody-historial"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast-container"></div>
+<script src="/js/api.js"></script>
+<script>
+  requireAuth();
+  renderSidebar('historial.html');
+
+  async function loadData() {
+    const [histRes, cimaRes] = await Promise.all([
+      api.get('/historial'),
+      api.get('/historial/cima'),
+    ]);
+
+    if (histRes?.ok) {
+      const data = histRes.data;
+      // Render pila visual (orden inverso — cima primero)
+      const pilaEl = document.getElementById('pila-visual');
+      pilaEl.innerHTML = data.length
+        ? data.map((a, i) => `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;
+                        background:${i===0?'rgba(245,158,11,.15)':'var(--bg-input)'};
+                        border-radius:8px;border:1px solid ${i===0?'rgba(245,158,11,.3)':'var(--border)'};
+                        transition:.2s">
+              ${i===0 ? '<span title="Cima">🔝</span>' : '<span style="opacity:.3">   </span>'}
+              <div style="flex:1">
+                <div style="font-size:.825rem;font-weight:${i===0?'600':'400'}">${a.accion}</div>
+                <div style="font-size:.75rem;color:var(--text-muted)">${a.descripcion}</div>
+              </div>
+              <span style="font-size:.7rem;color:var(--text-muted)">${formatDate(a.timestamp)}</span>
+            </div>`).join('')
+        : '<div class="empty-state"><div class="icon">🥞</div><p>Pila vacía</p></div>';
+
+      // Tabla
+      document.getElementById('tbody-historial').innerHTML = data.length
+        ? data.map(a => `
+            <tr>
+              <td>#${a.id}</td>
+              <td><span class="badge badge-blue">${a.accion}</span></td>
+              <td>${a.descripcion}</td>
+              <td>${formatDate(a.timestamp)}</td>
+            </tr>`).join('')
+        : '<tr><td colspan="4" class="text-center text-muted" style="padding:32px">Sin registros</td></tr>';
+    }
+  }
+
+  async function deshacer() {
+    const res = await api.post('/historial/deshacer');
+    if (res?.ok) {
+      toast(`Acción "${res.data.deshecho}" deshecha`, 'success');
+      loadData();
+    } else {
+      toast(res?.data?.error || 'Nada que deshacer', 'error');
+    }
+  }
+
+  loadData();
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+# Build artifacts
+backend/build/
+backend/cmake-build-*/
+*.o
+*.a
+*.exe
+
+# Docker volumes
+.docker/
+
+# Secrets / env
+.env
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
