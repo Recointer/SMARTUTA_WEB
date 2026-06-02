@@ -194,7 +194,12 @@ Universidad Técnica de Ambato
 │   └── Dirección de Investigación y Desarrollo
 ├── Vicerrectorado Administrativo (3)
 ├── Vicerrectorado de Investigación e Innovación (4)
-├── FISEI — Sistemas, Electrónica e Industrial (3 carreras)
+├── FISEI — Sistemas, Electrónica e Industrial (5 carreras)
+│   ├── Ingeniería Industrial
+│   ├── Ingeniería en Software
+│   ├── Tecnologías de la Información
+│   ├── Telecomunicaciones
+│   └── Automatización y Robótica
 ├── FCA — Ciencias Administrativas (2 carreras)
 ├── FCS — Ciencias de la Salud · Ingahurco (4 carreras)
 ├── FCAG — Agropecuarias · Querochaca (2 carreras)

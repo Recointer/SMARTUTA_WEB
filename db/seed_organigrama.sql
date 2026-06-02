@@ -87,9 +87,12 @@ INSERT INTO dependencias (nombre, descripcion, padre_id, nivel) VALUES
 
 -- ── NIVEL 2: Carreras FISEI (padre=11) ─────────────────────────
 INSERT INTO dependencias (nombre, descripcion, padre_id, nivel) VALUES
-('Ingeniería en Sistemas',   'Desarrollo de software y sistemas informáticos',             11, 2), -- 48
-('Ingeniería Electrónica',   'Electrónica, automatización y control',                      11, 2), -- 49
-('Ingeniería Industrial',    'Procesos industriales y productividad',                       11, 2); -- 50
+('Ingeniería Industrial',        'Procesos industriales y productividad',                      11, 2), -- 50
+('Ingeniería en Software',       'Desarrollo de software y aplicaciones',                      11, 2), -- 51
+('Tecnologías de la Información','Gestión y administración de sistemas TI',                    11, 2), -- 52
+('Telecomunicaciones',           'Redes, comunicaciones y transmisión de datos',               11, 2), -- 53
+('Automatización y Robótica',    'Sistemas automáticos, PLC y robótica industrial',            11, 2); -- 54
+
 
 -- ── NIVEL 2: Carreras FCHE (padre=12) ─────────────────────────
 INSERT INTO dependencias (nombre, descripcion, padre_id, nivel) VALUES
