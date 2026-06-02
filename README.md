@@ -433,7 +433,7 @@ El sistema usa **certificados SSL auto-firmados** generados en tiempo de build. 
 |---|---|
 | `https://localhost:8443` | Acceso local (tu máquina) |
 | `http://localhost:8090` | HTTP → redirige a HTTPS |
-| `https://192.168.2.15:8443` | **Acceso desde red WiFi local** |
+| `https://10.85.7.56:8443` | **Acceso desde red WiFi local** |
 
 > El navegador mostrará "Tu conexión no es privada" la primera vez (es normal con cert self-signed). Clic en **Avanzado → Continuar**.
 
@@ -455,7 +455,7 @@ Al hacer `docker-compose build backend`:
 | URL | Descripción |
 |---|---|
 | `https://localhost:8443` | Acceso local |
-| `https://192.168.2.15:8443` | Acceso desde WiFi del salón |
+| `https://10.85.7.56:8443` | Acceso desde WiFi del salón |
 
 ### Cuentas de demostración
 | Rol | Email | Contraseña |
