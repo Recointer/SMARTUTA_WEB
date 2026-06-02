@@ -96,7 +96,7 @@ body,html{margin:0;padding:0}
 <div class="map-toolbar" id="toolbar">
   <button class="tool-btn" id="tb-nav" onclick="setMode('nav')" title="Navegar/calcular ruta">🗺️ Navegar</button>
   <div class="tool-sep"></div>
-  <span id="admin-tools" style="display:none;display:flex;gap:6px;align-items:center">
+  <span id="admin-tools" style="display:none;gap:6px;align-items:center">
     <button class="tool-btn" id="tb-add" onclick="setMode('add')" title="Clic en el mapa para agregar punto">📍 Agregar punto</button>
     <button class="tool-btn" id="tb-connect" onclick="setMode('connect')" title="Clic en dos puntos para conectar">🔗 Conectar</button>
     <button class="tool-btn" id="tb-list" onclick="toggleList()" title="Ver lista de puntos">☰ Lista</button>
@@ -194,6 +194,10 @@ let routeLines=[], routeMarkers=[];
 // ── Mostrar panel admin ──────────────────────────────────────
 if(isAdmin){
   document.getElementById('admin-tools').style.display='flex';
+} else {
+  // Seguridad extra: asegurar que no-admin NUNCA vea las herramientas de edición
+  document.getElementById('admin-tools').style.display='none';
+  document.getElementById('admin-tools').remove();
 }
 
 // ── Helpers de íconos ────────────────────────────────────────

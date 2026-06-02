@@ -6,47 +6,154 @@
   <title>SmartCampus UTA — Iniciar Sesión</title>
   <meta name="description" content="Sistema de gestión universitaria SmartCampus UTA. Inicia sesión para acceder a turnos, trámites, documentos y mapa del campus.">
   <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .tabs{display:flex;gap:0;margin-bottom:20px;border-radius:10px;overflow:hidden;border:1px solid var(--border)}
+    .tab{flex:1;padding:10px;text-align:center;font-size:.82rem;font-weight:600;cursor:pointer;background:transparent;border:none;color:var(--text-muted);transition:.15s}
+    .tab.active{background:var(--accent);color:#fff}
+    .panel{display:none}.panel.active{display:block}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  </style>
 </head>
 <body>
 <div class="login-page">
-  <div class="login-card">
+  <div class="login-card" style="max-width:420px">
     <div class="login-logo">
       <div style="font-size:3rem;margin-bottom:12px">🎓</div>
       <h1>SmartCampus UTA</h1>
       <p>Sistema de Gestión Universitaria</p>
     </div>
 
-    <form id="login-form">
-      <div class="form-group">
-        <label class="form-label" for="email">Correo institucional</label>
-        <input id="email" type="email" class="form-control"
-               placeholder="usuario@uta.edu.ec" required autocomplete="email">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="password">Contraseña</label>
-        <input id="password" type="password" class="form-control"
-               placeholder="••••••••" required autocomplete="current-password">
-      </div>
-      <div id="login-error" style="display:none;color:#ef4444;font-size:.825rem;margin-bottom:12px;padding:10px;background:rgba(239,68,68,.1);border-radius:8px;border:1px solid rgba(239,68,68,.3)"></div>
-      <button id="login-btn" type="submit" class="btn btn-primary w-full"
-              style="justify-content:center;padding:12px;font-size:.95rem;margin-top:4px">
-        Iniciar Sesión
-      </button>
-    </form>
+    <!-- Tabs Login / Registro -->
+    <div class="tabs">
+      <button class="tab active" id="tab-login" onclick="switchTab('login')">Iniciar Sesión</button>
+      <button class="tab" id="tab-reg" onclick="switchTab('reg')">Registrarse</button>
+    </div>
 
-    <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border)">
-      <p style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-bottom:12px">Cuentas de demostración</p>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        <button class="btn btn-ghost btn-sm" onclick="quickLogin('admin@uta.edu.ec','admin123')" style="justify-content:flex-start;gap:8px">
-          <span>🔴</span> admin@uta.edu.ec <span style="margin-left:auto;opacity:.5">Admin</span>
+    <!-- ── PANEL LOGIN ── -->
+    <div class="panel active" id="panel-login">
+      <form id="login-form">
+        <div class="form-group">
+          <label class="form-label" for="email">Correo institucional</label>
+          <input id="email" type="email" class="form-control"
+                 placeholder="usuario@uta.edu.ec" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Contraseña</label>
+          <input id="password" type="password" class="form-control"
+                 placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <div id="login-error" style="display:none;color:#ef4444;font-size:.825rem;margin-bottom:12px;padding:10px;background:rgba(239,68,68,.1);border-radius:8px;border:1px solid rgba(239,68,68,.3)"></div>
+        <button id="login-btn" type="submit" class="btn btn-primary w-full"
+                style="justify-content:center;padding:12px;font-size:.95rem;margin-top:4px">
+          Iniciar Sesión
         </button>
-        <button class="btn btn-ghost btn-sm" onclick="quickLogin('secretaria@uta.edu.ec','admin123')" style="justify-content:flex-start;gap:8px">
-          <span>🟡</span> secretaria@uta.edu.ec <span style="margin-left:auto;opacity:.5">Secretaria</span>
-        </button>
-        <button class="btn btn-ghost btn-sm" onclick="quickLogin('juan@uta.edu.ec','admin123')" style="justify-content:flex-start;gap:8px">
-          <span>🟢</span> juan@uta.edu.ec <span style="margin-left:auto;opacity:.5">Estudiante</span>
-        </button>
+      </form>
+
+      <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border)">
+        <p style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-bottom:12px">Cuentas de demostración</p>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="quickLogin('admin@uta.edu.ec','admin123')" style="justify-content:flex-start;gap:8px">
+            <span>🔴</span> admin@uta.edu.ec <span style="margin-left:auto;opacity:.5">Admin</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="quickLogin('secretaria@uta.edu.ec','admin123')" style="justify-content:flex-start;gap:8px">
+            <span>🟡</span> secretaria@uta.edu.ec <span style="margin-left:auto;opacity:.5">Secretaria</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="quickLogin('juan@uta.edu.ec','admin123')" style="justify-content:flex-start;gap:8px">
+            <span>🟢</span> juan@uta.edu.ec <span style="margin-left:auto;opacity:.5">Estudiante</span>
+          </button>
+        </div>
       </div>
+    </div>
+
+    <!-- ── PANEL REGISTRO ── -->
+    <div class="panel" id="panel-reg">
+      <form id="reg-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="r-nombre">Nombre *</label>
+            <input id="r-nombre" type="text" class="form-control" placeholder="Juan" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="r-apellido">Apellido *</label>
+            <input id="r-apellido" type="text" class="form-control" placeholder="Pérez" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="r-cedula">Cédula *</label>
+          <input id="r-cedula" type="text" class="form-control" placeholder="1804000000" required maxlength="10">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="r-email">Correo electrónico *</label>
+          <input id="r-email" type="email" class="form-control" placeholder="ejemplo@uta.edu.ec" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="r-carrera">Carrera *</label>
+          <select id="r-carrera" class="form-control" required>
+            <option value="">Selecciona tu carrera...</option>
+            <optgroup label="🍃 Ciencia e Ingeniería en Alimentos y Biotecnología">
+              <option value="Ingeniería en Alimentos">Ingeniería en Alimentos</option>
+              <option value="Biotecnología">Biotecnología</option>
+            </optgroup>
+            <optgroup label="⚖️ Jurisprudencia y Ciencias Sociales">
+              <option value="Derecho">Derecho</option>
+              <option value="Comunicación Social">Comunicación Social</option>
+            </optgroup>
+            <optgroup label="💻 Ingeniería en Sistemas, Electrónica e Industrial">
+              <option value="Ingeniería en Sistemas">Ingeniería en Sistemas</option>
+              <option value="Ingeniería Electrónica">Ingeniería Electrónica</option>
+              <option value="Ingeniería Industrial">Ingeniería Industrial</option>
+            </optgroup>
+            <optgroup label="📖 Ciencias Humanas y de la Educación">
+              <option value="Pedagogía">Pedagogía</option>
+              <option value="Psicología Educativa">Psicología Educativa</option>
+            </optgroup>
+            <optgroup label="🎨 Diseño y Arquitectura">
+              <option value="Arquitectura">Arquitectura</option>
+              <option value="Diseño Gráfico">Diseño Gráfico</option>
+              <option value="Diseño Industrial">Diseño Industrial</option>
+              <option value="Diseño Textil e Indumentaria">Diseño Textil e Indumentaria</option>
+            </optgroup>
+            <optgroup label="🏗️ Ingeniería Civil y Mecánica">
+              <option value="Ingeniería Civil">Ingeniería Civil</option>
+              <option value="Ingeniería Mecánica">Ingeniería Mecánica</option>
+            </optgroup>
+            <optgroup label="📊 Ciencias Administrativas">
+              <option value="Administración de Empresas">Administración de Empresas</option>
+              <option value="Mercadotecnia">Mercadotecnia</option>
+            </optgroup>
+            <optgroup label="💰 Contabilidad y Auditoría">
+              <option value="Contabilidad y Auditoría">Contabilidad y Auditoría</option>
+            </optgroup>
+            <optgroup label="🏥 Ciencias de la Salud (Campus Ingahurco)">
+              <option value="Medicina">Medicina</option>
+              <option value="Enfermería">Enfermería</option>
+              <option value="Odontología">Odontología</option>
+              <option value="Terapia Física">Terapia Física</option>
+            </optgroup>
+            <optgroup label="🌱 Ciencias Agropecuarias (Campus Querochaca)">
+              <option value="Agronomía">Agronomía</option>
+              <option value="Medicina Veterinaria">Medicina Veterinaria</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="r-pass">Contraseña *</label>
+          <input id="r-pass" type="password" class="form-control" placeholder="Mínimo 6 caracteres" required minlength="6">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="r-pass2">Confirmar contraseña *</label>
+          <input id="r-pass2" type="password" class="form-control" placeholder="Repite la contraseña" required>
+        </div>
+        <div id="reg-error" style="display:none;color:#ef4444;font-size:.8rem;margin-bottom:10px;padding:8px;background:rgba(239,68,68,.1);border-radius:8px;border:1px solid rgba(239,68,68,.3)"></div>
+        <div id="reg-ok" style="display:none;color:#22c55e;font-size:.8rem;margin-bottom:10px;padding:8px;background:rgba(34,197,94,.1);border-radius:8px;border:1px solid rgba(34,197,94,.3)"></div>
+        <button id="reg-btn" type="submit" class="btn btn-primary w-full"
+                style="justify-content:center;padding:12px;font-size:.95rem">
+          ✅ Crear cuenta
+        </button>
+        <p style="font-size:.7rem;color:var(--text-muted);text-align:center;margin-top:10px">
+          ¿Ya tienes cuenta? <a href="#" onclick="switchTab('login')" style="color:var(--accent)">Iniciar sesión</a>
+        </p>
+      </form>
     </div>
 
     <p style="font-size:.7rem;color:var(--text-muted);text-align:center;margin-top:20px">
@@ -58,15 +165,19 @@
 <div id="toast-container"></div>
 <script src="/js/api.js"></script>
 <script>
-  // Redirect if already logged in
   if (api.isLoggedIn()) window.location.href = '/dashboard.html';
 
+  function switchTab(t) {
+    document.getElementById('panel-login').className = 'panel' + (t==='login'?' active':'');
+    document.getElementById('panel-reg').className   = 'panel' + (t==='reg'?' active':'');
+    document.getElementById('tab-login').className   = 'tab'   + (t==='login'?' active':'');
+    document.getElementById('tab-reg').className     = 'tab'   + (t==='reg'?' active':'');
+  }
+
+  // ── LOGIN ─────────────────────────────────────────────────
   document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    await doLogin(
-      document.getElementById('email').value,
-      document.getElementById('password').value
-    );
+    await doLogin(document.getElementById('email').value, document.getElementById('password').value);
   });
 
   async function quickLogin(email, password) {
@@ -81,23 +192,61 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Ingresando...';
     err.style.display = 'none';
-
     const res = await api.post('/auth/login', { email, password });
     btn.disabled = false;
     btn.textContent = 'Iniciar Sesión';
-
     if (!res || !res.ok) {
       err.textContent = res?.data?.error || 'Error de conexión';
       err.style.display = 'block';
       return;
     }
-    api.setAuth(res.data.token, {
-      id:     res.data.id,
-      nombre: res.data.nombre,
-      rol:    res.data.rol,
-    });
-    window.location.href = '/dashboard.html';
+    api.setAuth(res.data.token, { id: res.data.id, nombre: res.data.nombre, rol: res.data.rol });
+    // Redirigir según rol
+    const destino = res.data.rol === 'estudiante' ? '/portal-estudiante.html' : '/dashboard.html';
+    window.location.href = destino;
   }
+
+  // ── REGISTRO ──────────────────────────────────────────────
+  document.getElementById('reg-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = document.getElementById('reg-error');
+    const ok  = document.getElementById('reg-ok');
+    const btn = document.getElementById('reg-btn');
+    err.style.display = ok.style.display = 'none';
+
+    const pass  = document.getElementById('r-pass').value;
+    const pass2 = document.getElementById('r-pass2').value;
+    if (pass !== pass2) {
+      err.textContent = 'Las contraseñas no coinciden';
+      err.style.display = 'block'; return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Registrando...';
+
+    const body = {
+      nombre:   document.getElementById('r-nombre').value.trim(),
+      apellido: document.getElementById('r-apellido').value.trim(),
+      cedula:   document.getElementById('r-cedula').value.trim(),
+      email:    document.getElementById('r-email').value.trim(),
+      carrera:  document.getElementById('r-carrera').value,
+      password: pass,
+      facultad_id: 1
+    };
+
+    const res = await api.post('/auth/register-student', body);
+    btn.disabled = false;
+    btn.textContent = '✅ Crear cuenta';
+
+    if (!res?.ok) {
+      err.textContent = res?.data?.error || 'Error al registrar';
+      err.style.display = 'block'; return;
+    }
+    ok.textContent = '✅ Cuenta creada. Inicia sesión con tu email y contraseña.';
+    ok.style.display = 'block';
+    document.getElementById('reg-form').reset();
+    setTimeout(() => switchTab('login'), 2500);
+  });
 </script>
 </body>
 </html>

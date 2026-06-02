@@ -184,7 +184,7 @@ public:
         auto r = txn.exec(
             "SELECT "
             "(SELECT COUNT(*) FROM usuarios WHERE activo=TRUE) AS usuarios,"
-            "(SELECT COUNT(*) FROM estudiantes) AS estudiantes,"
+            "(SELECT COUNT(*) FROM usuarios u JOIN roles r ON u.rol_id=r.id WHERE r.nombre='estudiante' AND u.activo=TRUE) AS estudiantes,"
             "(SELECT COUNT(*) FROM tramites) AS tramites,"
             "(SELECT COUNT(*) FROM turnos WHERE DATE(created_at)=CURRENT_DATE) AS turnos_hoy,"
             "(SELECT COUNT(*) FROM documentos) AS documentos");

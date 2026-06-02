@@ -59,6 +59,10 @@
 <script src="/js/api.js"></script>
 <script>
   requireAuth();
+  // Estudiante no tiene acceso al dashboard administrativo
+  if (api.getUser()?.rol === 'estudiante') {
+    window.location.href = '/portal-estudiante.html';
+  }
   renderSidebar('dashboard.html');
 
   // Clock

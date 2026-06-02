@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Mi Portal — SmartCampus UTA</title>
+  <meta name="description" content="Portal del estudiante SmartCampus UTA. Gestiona tus turnos, trámites y accede al mapa del campus.">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .portal-hero {
+      background: linear-gradient(135deg, rgba(37,99,235,.15), rgba(124,58,237,.15));
+      border: 1px solid rgba(37,99,235,.25);
+      border-radius: 16px; padding: 28px; margin-bottom: 24px;
+      display: flex; align-items: center; gap: 20px;
+    }
+    .portal-avatar {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .turno-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(37,99,235,.15); border: 1px solid rgba(37,99,235,.3);
+      border-radius: 10px; padding: 10px 16px; font-weight: 600;
+      font-size: .9rem; margin-top: 8px;
+    }
+    .quick-action {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      padding: 20px; border-radius: 12px;
+      background: var(--bg-input); border: 1px solid var(--border);
+      text-decoration: none; color: var(--text); transition: all .15s;
+      font-size: .825rem; font-weight: 500; text-align: center;
+    }
+    .quick-action:hover {
+      border-color: var(--accent); background: rgba(37,99,235,.08);
+      transform: translateY(-2px);
+    }
+    .quick-action .qa-icon { font-size: 2rem; }
+    .tramite-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px; background: var(--bg-input); border-radius: 8px; gap: 12px;
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">🎓 Mi Portal</div>
+      <div class="topbar-actions">
+        <span id="topbar-time" class="text-muted" style="font-size:.8rem"></span>
+      </div>
+    </div>
+    <div class="page">
+
+      <!-- Hero: bienvenida personalizada -->
+      <div class="portal-hero">
+        <div class="portal-avatar" id="hero-avatar">?</div>
+        <div>
+          <div style="font-size:1.1rem;font-weight:700" id="hero-nombre">Cargando...</div>
+          <div class="text-muted" style="font-size:.85rem" id="hero-carrera"></div>
+          <div id="hero-turno"></div>
+        </div>
+      </div>
+
+      <!-- Acciones rápidas -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px" id="quick-actions">
+        <a href="turnos.html" class="quick-action">
+          <span class="qa-icon">🎫</span>Sacar Turno
+        </a>
+        <a href="tramites.html" class="quick-action">
+          <span class="qa-icon">📋</span>Mis Trámites
+        </a>
+        <a href="campus.html" class="quick-action">
+          <span class="qa-icon">🗺️</span>Mapa Campus
+        </a>
+        <a href="dependencias.html" class="quick-action">
+          <span class="qa-icon">🏛️</span>Oficinas
+        </a>
+      </div>
+
+      <!-- Grid: turno actual + trámites recientes -->
+      <div class="grid-2">
+        <!-- Mi turno actual -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🎫 Mi Turno Actual</span>
+            <button onclick="loadTurnoActual()" class="btn btn-ghost btn-sm">🔄</button>
+          </div>
+          <div id="mi-turno-contenido">
+            <div class="loading-center"><span class="spinner"></span></div>
+          </div>
+        </div>
+
+        <!-- Mis trámites recientes -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📋 Mis Trámites Recientes</span>
+            <a href="tramites.html" class="btn btn-ghost btn-sm">Ver todos →</a>
+          </div>
+          <div id="mis-tramites-contenido">
+            <div class="loading-center"><span class="spinner"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estado de la cola (solo lectura) -->
+      <div class="card mt-24">
+        <div class="card-header">
+          <span class="card-title">📊 Estado de la Cola Hoy</span>
+          <span class="text-muted" style="font-size:.75rem">Solo lectura — actualizado cada 15s</span>
+        </div>
+        <div id="cola-publica">
+          <div class="loading-center"><span class="spinner"></span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/api.js"></script>
+<script>
+  requireAuth();
+  // Solo estudiantes aquí
+  if (api.getUser()?.rol !== 'estudiante') {
+    window.location.href = '/dashboard.html';
+  }
+  renderSidebar('portal-estudiante.html');
+
+  const user = api.getUser();
+
+  // Clock
+  const tick = () => { document.getElementById('topbar-time').textContent = new Date().toLocaleString('es-EC'); };
+  tick(); setInterval(tick, 1000);
+
+  // Hero
+  const initial = (user.nombre || 'E')[0].toUpperCase();
+  document.getElementById('hero-avatar').textContent = initial;
+  document.getElementById('hero-nombre').textContent = '¡Bienvenido, ' + user.nombre + '!';
+
+  async function loadPerfil() {
+    // (el carrera viene del perfil de estudiante si existe)
+    document.getElementById('hero-carrera').textContent = 'Estudiante UTA';
+  }
+
+  async function loadTurnoActual() {
+    const res = await api.get('/turnos');
+    const div = document.getElementById('mi-turno-contenido');
+    if (!res?.ok || !res.data.length) {
+      div.innerHTML = `
+        <div class="empty-state" style="padding:20px">
+          <div class="icon">🎫</div>
+          <p>No tienes turnos activos hoy</p>
+          <a href="turnos.html" class="btn btn-primary" style="margin-top:8px">Sacar turno</a>
+        </div>`;
+      document.getElementById('hero-turno').innerHTML = '';
+      return;
+    }
+    const pendiente = res.data.find(t => t.estado === 'pendiente');
+    if (pendiente) {
+      div.innerHTML = `
+        <div style="text-align:center;padding:20px">
+          <div style="font-size:3rem;font-weight:800;color:var(--accent)">#${pendiente.numero_turno}</div>
+          <div style="font-size:.85rem;color:var(--text-muted);margin-top:4px">${pendiente.tipo_tramite}</div>
+          <div style="margin-top:12px">${estadoBadge(pendiente.estado)}</div>
+          <div style="font-size:.75rem;color:var(--text-muted);margin-top:8px">Sacado: ${formatDate(pendiente.created_at)}</div>
+        </div>`;
+      document.getElementById('hero-turno').innerHTML =
+        `<div class="turno-badge">🎫 Turno #${pendiente.numero_turno} — en espera</div>`;
+    } else {
+      // Mostrar último turno del día
+      const ultimo = res.data[0];
+      div.innerHTML = `
+        <div style="text-align:center;padding:20px">
+          <div style="font-size:2rem">✅</div>
+          <div style="font-weight:600;margin-top:8px">Tu turno fue atendido</div>
+          <div style="font-size:.8rem;color:var(--text-muted)">Turno #${ultimo.numero_turno} — ${ultimo.tipo_tramite}</div>
+        </div>`;
+      document.getElementById('hero-turno').innerHTML = '';
+    }
+  }
+
+  async function loadMisTramites() {
+    const res = await api.get('/tramites');
+    const div = document.getElementById('mis-tramites-contenido');
+    if (!res?.ok || !res.data.length) {
+      div.innerHTML = `
+        <div class="empty-state" style="padding:20px">
+          <div class="icon">📋</div><p>Sin trámites aún</p>
+        </div>`;
+      return;
+    }
+    const items = res.data.slice(0, 5);
+    div.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">
+      ${items.map(t => `
+        <div class="tramite-row">
+          <div>
+            <div style="font-size:.825rem;font-weight:500">${t.tipo_tramite || 'Trámite general'}</div>
+            <div style="font-size:.72rem;color:var(--text-muted)">${formatDate(t.created_at)}</div>
+          </div>
+          ${estadoBadge(t.estado)}
+        </div>`).join('')}
+    </div>`;
+  }
+
+  async function loadColaPublica() {
+    const res = await api.get('/turnos/estado');
+    const div = document.getElementById('cola-publica');
+    if (!res?.ok) return;
+    const d = res.data;
+    div.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:center;padding:8px">
+        <div>
+          <div style="font-size:2rem;font-weight:800;color:var(--warning)">${d.pendientes||0}</div>
+          <div class="text-muted" style="font-size:.8rem">En espera</div>
+        </div>
+        <div>
+          <div style="font-size:2rem;font-weight:800;color:var(--success)">${d.atendidos||0}</div>
+          <div class="text-muted" style="font-size:.8rem">Atendidos hoy</div>
+        </div>
+        <div>
+          <div style="font-size:2rem;font-weight:800">${d.total||0}</div>
+          <div class="text-muted" style="font-size:.8rem">Total hoy</div>
+        </div>
+      </div>
+      ${d.siguiente_numero ? `
+        <div style="margin-top:8px;padding:10px;background:rgba(37,99,235,.08);border-radius:8px;text-align:center;font-size:.85rem">
+          Próximo a ser atendido: <strong>#${d.siguiente_numero}</strong>
+        </div>` : ''}`;
+  }
+
+  // Cargar todo
+  loadPerfil();
+  loadTurnoActual();
+  loadMisTramites();
+  loadColaPublica();
+  // Auto-refresh turnos y cola cada 15s
+  setInterval(() => { loadTurnoActual(); loadColaPublica(); }, 15000);
+</script>
+</body>
+</html>

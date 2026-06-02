@@ -76,15 +76,18 @@ function renderSidebar(activePage = '') {
     if (!user) return;
 
     const nav = [
-        { href: 'dashboard.html',   icon: '🏠', label: 'Dashboard',      roles: ['admin','secretaria','estudiante'] },
-        { href: 'turnos.html',      icon: '🎫', label: 'Turnos',         roles: ['admin','secretaria','estudiante'] },
-        { href: 'tramites.html',    icon: '📋', label: 'Trámites',       roles: ['admin','secretaria','estudiante'] },
-        { href: 'historial.html',   icon: '📜', label: 'Historial',      roles: ['admin','secretaria','estudiante'] },
-        { href: 'documentos.html',  icon: '📁', label: 'Documentos',     roles: ['admin','secretaria','estudiante'] },
-        { href: 'dependencias.html',icon: '🏛️', label: 'Dependencias',   roles: ['admin','secretaria','estudiante'] },
-        { href: 'campus.html',      icon: '🗺️', label: 'Mapa Campus',    roles: ['admin','secretaria','estudiante'] },
-        { href: 'reportes.html',    icon: '📊', label: 'Reportes',       roles: ['admin'] },
-        { href: 'admin.html',       icon: '⚙️', label: 'Administración', roles: ['admin'] },
+        { href: 'dashboard.html',        icon: '🏠', label: 'Dashboard',      roles: ['admin','secretaria'] },
+        { href: 'portal-estudiante.html', icon: '🎓', label: 'Mi Portal',       roles: ['estudiante'] },
+        { href: 'turnos.html',            icon: '🎫', label: 'Turnos',          roles: ['admin','secretaria','estudiante'] },
+        { href: 'tramites.html',          icon: '📋', label: 'Mis Trámites',    roles: ['estudiante'] },
+        { href: 'tramites.html',          icon: '📋', label: 'Trámites',        roles: ['admin','secretaria'] },
+        { href: 'historial.html',         icon: '📜', label: 'Historial',       roles: ['admin','secretaria'] },
+        { href: 'documentos.html',        icon: '📁', label: 'Documentos',      roles: ['admin','secretaria','estudiante'] },
+        { href: 'dependencias.html',      icon: '🏛️', label: 'Dependencias',    roles: ['admin','secretaria','estudiante'] },
+        { href: 'campus.html',            icon: '🗺️', label: 'Mapa Campus',     roles: ['admin','secretaria','estudiante'] },
+        { href: 'reportes.html',          icon: '📊', label: 'Reportes',        roles: ['admin'] },
+        { href: 'admin.html',             icon: '⚙️', label: 'Administración',  roles: ['admin'] },
+
     ];
 
     const sidebarEl = document.getElementById('sidebar');

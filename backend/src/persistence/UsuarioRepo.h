@@ -101,6 +101,11 @@ public:
                            {"descripcion", row["descripcion"].c_str()}});
         return arr;
     }
+    static bool existeEmail(const std::string& email) {
+        auto u = findByEmail(email);
+        return !u.is_null();
+    }
 };
+
 
 

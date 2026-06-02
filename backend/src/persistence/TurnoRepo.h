@@ -86,6 +86,24 @@ public:
                 {"atendidos",  r[0]["atendidos"].as<int>()},
                 {"total",      r[0]["total"].as<int>()}};
     }
+    static json findByUsuario(int usuario_id, int limit = 50) {
+        auto _conn_ = DB_CONN(); pqxx::work txn(*_conn_);
+        auto r = txn.exec_params(
+            "SELECT t.id, t.numero_turno, t.tipo_tramite, t.estado, "
+            "t.created_at, t.atendido_at, u.nombre AS usuario "
+            "FROM turnos t LEFT JOIN usuarios u ON t.usuario_id = u.id "
+            "WHERE t.usuario_id=$1 ORDER BY t.id DESC LIMIT $2",
+            usuario_id, limit);
+        txn.commit();
+        json arr = json::array();
+        for (const auto row : r)
+            arr.push_back({{"id",           row["id"].as<int>()},
+                           {"numero_turno", row["numero_turno"].as<int>()},
+                           {"tipo_tramite", row["tipo_tramite"].c_str()},
+                           {"estado",       row["estado"].c_str()},
+                           {"usuario",      row["usuario"].is_null() ? "" : row["usuario"].c_str()},
+                           {"created_at",   row["created_at"].c_str()},
+                           {"atendido_at",  row["atendido_at"].is_null() ? "" : row["atendido_at"].c_str()}});
+        return arr;
+    }
 };
-
-
